@@ -4,6 +4,7 @@ Enterprise infrastructure operations face increasing complexity due to
 growing virtualized environments and rising security requirements.
 
 Current challenges include:
+
 - High manual effort in monitoring VM health
 - Reactive incident handling and slow root-cause analysis
 - Difficulty quantifying infrastructure and security posture

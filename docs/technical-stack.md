@@ -25,3 +25,6 @@
 ## Observability
 - Prometheus (metrics)
 - Grafana (visualization)
+
+## Frontend
+- Streamlit
