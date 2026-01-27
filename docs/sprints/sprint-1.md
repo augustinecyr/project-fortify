@@ -34,16 +34,13 @@ Checkpoint: docker-compose up runs successfully, can connect to PostgreSQL
 
 ### Days 3-4: Database & Mock Data
 
-1. Install SQLAlchemy and Alembic
-2. Create database models:
-   - VirtualMachine (id, vm_id, name, created_at)
-   - CPUMetric (id, vm_id, timestamp, cpu_percent, source)
-   - HealthScore (id, vm_id, score, computed_at, components)
-3. Setup Alembic migrations
-4. Create initial migration
-5. Write 20 VM fixtures in data/fixtures/vms.json
-6. Generate CPU metrics for each VM (7 days of data)
-7. Create seed script to populate database
+1. Create FastAPI application structure (main.py, routers/, models/, db/)
+2. Create basic /health endpoint
+3. Install SQLAlchemy and Alembic
+4. Create database models (VirtualMachine, CPUMetric, HealthScore)
+5. Setup Alembic migrations
+6. Create initial migration
+7. Verify API runs and connects to database
 
 Checkpoint: Database seeded with 20 VMs and metric records
 
@@ -185,30 +182,7 @@ Cleanup:
 - make docker-down - Stop all services
 - make clean - Remove temporary files
 
-Next sprint topics:
-
-1. Security metadata ingestion
-2. Security posture scoring
-3. Background scheduler for automated scoring
-4. Streamlit dashboard foundation
-
----
-
-## End of Sprint Reflection
-
-What went well:
-
-What was challenging:
-
-What to improve:
-
-What I learned:
-
-Ready for Sprint 2: Yes / No
-
-If no, what needs completion:
-
 ---
 
 Version: 1.0  
-Last Updated: [Date]
+Last Updated: [25/01/2026]
