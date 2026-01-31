@@ -4,11 +4,7 @@ FastAPI main application entry point for Project Fortify.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import health
-
-# Remove these lines - using Alembic now
-# from app.db.database import engine
-# from app.db import models
-# models.Base.metadata.create_all(bind=engine)
+from app.routers import metrics          # Add this line
 
 app = FastAPI(
     title="Project Fortify API",
@@ -19,7 +15,7 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,6 +23,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router, tags=["health"])
+app.include_router(metrics.router)       # Add this line
 
 
 @app.get("/")
