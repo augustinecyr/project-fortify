@@ -4,11 +4,11 @@ FastAPI main application entry point for Project Fortify.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import health
-from app.db.database import engine
-from app.db import models
 
-# Create database tables
-models.Base.metadata.create_all(bind=engine)
+# Remove these lines - using Alembic now
+# from app.db.database import engine
+# from app.db import models
+# models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Project Fortify API",
