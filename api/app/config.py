@@ -2,6 +2,7 @@
 Application configuration management.
 """
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 
 
 class Settings(BaseSettings):
@@ -21,9 +22,11 @@ class Settings(BaseSettings):
     ANOMALY_THRESHOLD: float = 0.7
     SCORE_UPDATE_INTERVAL: int = 300  # seconds
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    model_config = ConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra='ignore'  # Ignore extra fields from .env
+    )
 
 
 settings = Settings()
