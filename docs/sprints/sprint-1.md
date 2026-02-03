@@ -1,9 +1,7 @@
 # Sprint 1: Project Foundation & Core Backend
 
 Duration: 2 weeks  
-Goal: Set up development environment and build core API with metric ingestion and health scoring  
-Start Date: [Fill in]  
-End Date: [Fill in]
+Goal: Set up development environment and build core API with metric ingestion and health scoring
 
 ---
 
