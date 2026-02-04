@@ -4,6 +4,7 @@ API client for Fortify backend integration.
 import requests
 import streamlit as st
 from typing import Optional, Dict, List
+import time
 
 
 class FortifyAPIClient:
@@ -12,13 +13,14 @@ class FortifyAPIClient:
     def __init__(self, base_url: str = "http://localhost:8000"):
         self.base_url = base_url
     
-    def _make_request(self, endpoint: str, method: str = "GET", **kwargs) -> Optional[Dict]:
+    def _make_request(self, endpoint: str, method: str = "GET", retries: int = 3, **kwargs) -> Optional[Dict]:
         """
-        Make HTTP request to API with error handling.
+        Make HTTP request to API with error handling and retry logic.
         
         Args:
             endpoint: API endpoint path
             method: HTTP method (GET, POST, etc.)
+            retries: Number of retry attempts
             **kwargs: Additional arguments for requests
         
         Returns:
@@ -26,22 +28,31 @@ class FortifyAPIClient:
         """
         url = f"{self.base_url}{endpoint}"
         
-        try:
-            response = requests.request(method, url, timeout=5, **kwargs)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.ConnectionError:
-            st.error(f"❌ Cannot connect to API at {self.base_url}. Is the API running?")
-            return None
-        except requests.exceptions.Timeout:
-            st.error("⏱️ Request timed out. API is taking too long to respond.")
-            return None
-        except requests.exceptions.HTTPError as e:
-            st.error(f"❌ API Error: {e.response.status_code} - {e.response.text}")
-            return None
-        except Exception as e:
-            st.error(f"❌ Unexpected error: {str(e)}")
-            return None
+        for attempt in range(retries):
+            try:
+                response = requests.request(method, url, timeout=5, **kwargs)
+                response.raise_for_status()
+                return response.json()
+            except requests.exceptions.ConnectionError:
+                if attempt < retries - 1:
+                    time.sleep(1)
+                    continue
+                st.error(f"❌ Cannot connect to API at {self.base_url}. Is the API running?")
+                return None
+            except requests.exceptions.Timeout:
+                if attempt < retries - 1:
+                    time.sleep(1)
+                    continue
+                st.error("⏱️ Request timed out. API is taking too long to respond.")
+                return None
+            except requests.exceptions.HTTPError as e:
+                st.error(f"❌ API Error: {e.response.status_code} - {e.response.text}")
+                return None
+            except Exception as e:
+                st.error(f"❌ Unexpected error: {str(e)}")
+                return None
+        
+        return None
     
     @st.cache_data(ttl=300)
     def get_system_status(_self) -> Optional[Dict]:
@@ -54,8 +65,8 @@ class FortifyAPIClient:
         Get all VMs from database.
         Note: This endpoint doesn't exist yet, so we'll use a workaround.
         """
-        # For now, return hardcoded VM list based on the seed data
-        # In actual use case, need to onboard a GET /api/v1/vms endpoint or equilavent
+        # For now, return hardcoded VM list based on our seed data
+        # In a real scenario, you'd add a GET /api/v1/vms endpoint
         vms = [
             {"vm_id": f"vm-{str(i+1).zfill(3)}", "name": name}
             for i, name in enumerate([

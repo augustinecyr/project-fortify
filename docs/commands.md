@@ -7,6 +7,7 @@ Quick reference for all development commands used in Project Fortify.
 ## Initial Setup Commands
 
 ### Environment Setup
+
 ```powershell
 # Copy environment template
 Copy-Item .env.example .env
@@ -32,6 +33,7 @@ deactivate
 ```
 
 ### Docker Commands
+
 ```powershell
 # Start all Docker services
 docker-compose -f infrastructure/docker-compose.yml up -d
@@ -59,6 +61,7 @@ docker-compose -f infrastructure/docker-compose.yml down -v
 ```
 
 ### Re-seed Database with Fresh Data
+
 ```powershell
 # Activate API venv
 cd api
@@ -76,6 +79,7 @@ python data/seeds/seed_database.py
 ```
 
 ### Database Commands
+
 ```powershell
 # Connect to PostgreSQL in Docker
 docker exec -it fortify-postgres psql -U fortify_user -d fortify
@@ -92,6 +96,7 @@ docker exec -it fortify-postgres psql -U fortify_user -d fortify
 ## Development Commands
 
 ### Running the Dashboard
+
 ```powershell
 # Setup dashboard environment (one-time)
 cd frontend/dashboard
@@ -114,6 +119,7 @@ streamlit run app.py
 ```
 
 ### Running the API
+
 ```powershell
 # Run API locally (with hot-reload)
 cd api
@@ -128,6 +134,7 @@ docker-compose -f infrastructure/docker-compose.yml up -d api
 ```
 
 ### Testing Endpoints
+
 ```powershell
 # Using PowerShell
 Invoke-WebRequest -Uri http://localhost:8000/health -UseBasicParsing | Select-Object -ExpandProperty Content
@@ -142,6 +149,7 @@ curl http://localhost:8000/api/v1/status
 ```
 
 ### Code Quality
+
 ```powershell
 # Format code with black
 cd api
@@ -162,6 +170,7 @@ black app/ && isort app/ && flake8 app/
 ```
 
 ### Testing
+
 ```powershell
 # Run all tests
 cd api
@@ -183,6 +192,7 @@ pytest -v
 ## Database Migration Commands (Alembic)
 
 ### Initial Setup
+
 ```powershell
 cd api
 .\venv\Scripts\Activate.ps1
@@ -192,6 +202,7 @@ alembic init alembic
 ```
 
 ### Creating Migrations
+
 ```powershell
 # Create new migration (auto-generate from models)
 alembic revision --autogenerate -m "description of changes"
@@ -201,6 +212,7 @@ alembic revision -m "description of changes"
 ```
 
 ### Running Migrations
+
 ```powershell
 # Apply all pending migrations
 alembic upgrade head
@@ -223,6 +235,7 @@ alembic history
 ## Git Commands
 
 ### Branch Management
+
 ```powershell
 # View all branches
 git branch -a
@@ -241,6 +254,7 @@ git push origin --delete branch-name
 ```
 
 ### Committing Changes
+
 ```powershell
 # Check status
 git status
@@ -264,6 +278,7 @@ git commit -m "type: description"
 ```
 
 ### Syncing with Remote
+
 ```powershell
 # Push to remote
 git push
@@ -283,6 +298,7 @@ git fetch
 ## Project Structure Commands
 
 ### Creating Directories
+
 ```powershell
 # Create directory with subdirectories
 New-Item -ItemType Directory -Path "path/to/directory" -Force
@@ -292,6 +308,7 @@ New-Item -ItemType Directory -Path "app/routers", "app/models", "app/db" -Force
 ```
 
 ### Creating Files
+
 ```powershell
 # Create empty file
 New-Item -ItemType File -Path "path/to/file.py"
@@ -301,6 +318,7 @@ New-Item -ItemType File -Path "app/__init__.py", "app/main.py"
 ```
 
 ### Viewing Files
+
 ```powershell
 # View file content
 cat filename
@@ -318,6 +336,7 @@ ls -Recurse  # Recursive
 ## Troubleshooting Commands
 
 ### Python Environment Issues
+
 ```powershell
 # Check Python version
 python --version
@@ -337,6 +356,7 @@ pip install package-name
 ```
 
 ### Docker Issues
+
 ```powershell
 # Check Docker is running
 docker --version
@@ -360,6 +380,7 @@ docker image prune
 ```
 
 ### Port Conflicts
+
 ```powershell
 # Check what's using a port (PowerShell)
 Get-NetTCPConnection -LocalPort 8000
@@ -369,6 +390,7 @@ Stop-Process -Id <PID> -Force
 ```
 
 ### Database Connection Issues
+
 ```powershell
 # Test PostgreSQL connection
 docker exec -it fortify-postgres psql -U fortify_user -d fortify
@@ -385,6 +407,7 @@ docker restart fortify-postgres
 ## Quick Start Checklist
 
 ### Starting a Full Development Session (API + Dashboard)
+
 ```powershell
 # 1. Start Docker services
 docker-compose -f infrastructure/docker-compose.yml up -d postgres redis
@@ -405,6 +428,7 @@ streamlit run app.py
 ```
 
 ### Starting a New Development Session
+
 ```powershell
 # 1. Start Docker services
 docker-compose -f infrastructure/docker-compose.yml up -d postgres redis
@@ -421,6 +445,7 @@ uvicorn app.main:app --reload
 ```
 
 ### Before Committing Code
+
 ```powershell
 # 1. Format code
 black app/

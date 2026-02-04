@@ -2,16 +2,18 @@
 VM Health Page - Detailed health score analysis and metrics visualization.
 """
 import streamlit as st
-import plotly.graph_objects as go
-import plotly.express as px
 import pandas as pd
 import sys
 from pathlib import Path
 from datetime import datetime
 
-# Add utils to path
+# Add paths
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "utils"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "components"))
+
 from api_client import FortifyAPIClient
+from charts import create_health_gauge, create_cpu_timeseries, create_component_bars
+from helpers import get_health_status_class, export_to_csv
 
 # Page configuration
 st.set_page_config(
@@ -57,7 +59,7 @@ with st.sidebar:
         st.divider()
         
         # Refresh button
-        if st.button("🔄 Refresh Data", use_container_width=True):
+        if st.button("🔄 Refresh Data", width='stretch'):
             st.cache_data.clear()
             st.rerun()
         
@@ -93,58 +95,14 @@ if selected_vm_id:
             # Health score gauge
             st.markdown("### Health Score")
             
-            # Determine color and status
-            if health_score >= 80:
-                color = "#28a745"
-                status = "Excellent"
-                status_class = "health-score-excellent"
-            elif health_score >= 65:
-                color = "#5cb85c"
-                status = "Good"
-                status_class = "health-score-good"
-            elif health_score >= 50:
-                color = "#ffc107"
-                status = "Warning"
-                status_class = "health-score-warning"
-            else:
-                color = "#dc3545"
-                status = "Critical"
-                status_class = "health-score-critical"
+            # Get status info
+            css_class, status, color = get_health_status_class(health_score)
             
-            # Create gauge chart
-            fig_gauge = go.Figure(go.Indicator(
-                mode="gauge+number",
-                value=health_score,
-                domain={'x': [0, 1], 'y': [0, 1]},
-                title={'text': status, 'font': {'size': 20}},
-                gauge={
-                    'axis': {'range': [None, 100], 'tickwidth': 1},
-                    'bar': {'color': color},
-                    'bgcolor': "white",
-                    'borderwidth': 2,
-                    'bordercolor': "gray",
-                    'steps': [
-                        {'range': [0, 50], 'color': '#ffebee'},
-                        {'range': [50, 65], 'color': '#fff9c4'},
-                        {'range': [65, 80], 'color': '#e8f5e9'},
-                        {'range': [80, 100], 'color': '#c8e6c9'}
-                    ],
-                    'threshold': {
-                        'line': {'color': "red", 'width': 4},
-                        'thickness': 0.75,
-                        'value': 50
-                    }
-                }
-            ))
+            # Create and display gauge
+            fig_gauge = create_health_gauge(health_score)
+            st.plotly_chart(fig_gauge, width='stretch')
             
-            fig_gauge.update_layout(
-                height=300,
-                margin=dict(l=20, r=20, t=40, b=20)
-            )
-            
-            st.plotly_chart(fig_gauge, use_container_width=True)
-            
-            st.markdown(f"<p class='{status_class}' style='text-align: center; font-size: 1.2rem;'>{status}</p>", unsafe_allow_html=True)
+            st.markdown(f"<p class='{css_class}' style='text-align: center; font-size: 1.2rem;'>{status}</p>", unsafe_allow_html=True)
         
         with col2:
             # Score components breakdown
@@ -191,60 +149,56 @@ if selected_vm_id:
         # CPU Metrics Time Series
         st.markdown("### 📉 CPU Metrics (Last 24 Hours)")
         
-        metrics_data = api_client.get_cpu_metrics(selected_vm_id, limit=1440)
+        # Time range selector
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            time_range = st.selectbox(
+                "Time Range:",
+                ["Last 1 Hour", "Last 6 Hours", "Last 12 Hours", "Last 24 Hours"],
+                index=3
+            )
+        with col2:
+            if st.button("📥 Export CSV"):
+                # Will implement export
+                st.info("Export functionality coming soon!")
+        
+        # Map time range to limit
+        time_range_map = {
+            "Last 1 Hour": 60,
+            "Last 6 Hours": 360,
+            "Last 12 Hours": 720,
+            "Last 24 Hours": 1440
+        }
+        limit = time_range_map.get(time_range, 1440)
+        
+        metrics_data = api_client.get_cpu_metrics(selected_vm_id, limit=limit)
         
         if metrics_data and metrics_data.get("metrics"):
             metrics_list = metrics_data["metrics"]
             
-            # Create DataFrame
+            # Create time series chart using component
+            anomalous_indices = anomaly_details.get("anomalous_indices", [])
+            fig_timeseries = create_cpu_timeseries(
+                metrics_list,
+                mean_cpu,
+                anomalous_indices if anomalous_indices and len(anomalous_indices) < len(metrics_list) else None,
+                height=400
+            )
+            st.plotly_chart(fig_timeseries, width='stretch')
+            
+            # Export data preparation
+            if st.session_state.get('export_csv', False):
+                csv_data = export_to_csv(metrics_list, f"{selected_vm_id}_metrics.csv")
+                st.download_button(
+                    label="📥 Download CSV",
+                    data=csv_data,
+                    file_name=f"{selected_vm_id}_metrics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv"
+                )
+            
+            # Create DataFrame for statistics
             df = pd.DataFrame(metrics_list)
             df['timestamp'] = pd.to_datetime(df['timestamp'])
-            
-            # Create time series chart
-            fig_timeseries = go.Figure()
-            
-            # Add CPU line
-            fig_timeseries.add_trace(go.Scatter(
-                x=df['timestamp'],
-                y=df['cpu_percent'],
-                mode='lines',
-                name='CPU Usage',
-                line=dict(color='#1f77b4', width=2),
-                hovertemplate='<b>Time</b>: %{x}<br><b>CPU</b>: %{y:.2f}%<extra></extra>'
-            ))
-            
-            # Add mean line
-            fig_timeseries.add_hline(
-                y=mean_cpu,
-                line_dash="dash",
-                line_color="green",
-                annotation_text=f"Mean: {mean_cpu:.1f}%",
-                annotation_position="right"
-            )
-            
-            # Highlight anomalies if present
-            anomalous_indices = anomaly_details.get("anomalous_indices", [])
-            if anomalous_indices and len(anomalous_indices) < len(df):
-                anomaly_df = df.iloc[anomalous_indices]
-                fig_timeseries.add_trace(go.Scatter(
-                    x=anomaly_df['timestamp'],
-                    y=anomaly_df['cpu_percent'],
-                    mode='markers',
-                    name='Anomalies',
-                    marker=dict(color='red', size=8, symbol='x'),
-                    hovertemplate='<b>Anomaly</b><br><b>Time</b>: %{x}<br><b>CPU</b>: %{y:.2f}%<extra></extra>'
-                ))
-            
-            fig_timeseries.update_layout(
-                title="CPU Utilization Over Time",
-                xaxis_title="Time",
-                yaxis_title="CPU Usage (%)",
-                hovermode='x unified',
-                height=400,
-                showlegend=True
-            )
-            
-            st.plotly_chart(fig_timeseries, use_container_width=True)
             
             # Statistics
             col1, col2, col3, col4 = st.columns(4)
