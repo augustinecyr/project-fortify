@@ -6,7 +6,7 @@ import json
 import sys
 import random
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 # Add parent directories to path
 project_root = Path(__file__).resolve().parents[2]
@@ -36,7 +36,7 @@ def generate_cpu_metrics(vm_id: str, days: int = 7):
         List of CPUMetric objects
     """
     metrics = []
-    end_time = datetime.datetime.now(datetime.UTC)
+    end_time = datetime.now(UTC)
     start_time = end_time - timedelta(days=days)
     
     # Generate metrics every 1 minute
