@@ -59,34 +59,31 @@ class FortifyAPIClient:
         """Get system status."""
         return _self._make_request("/api/v1/status")
     
-    @st.cache_data(ttl=60)
+    @st.cache_data(ttl=180)
     def get_all_vms(_self) -> Optional[List[Dict]]:
         """
         Get all VMs from database.
-        Note: This endpoint doesn't exist yet, so we'll use a workaround.
+        Now uses the /vms endpoint which is much faster.
         """
-        # For now, return hardcoded VM list based on our seed data
-        # In a real scenario, you'd add a GET /api/v1/vms endpoint
-        vms = [
-            {"vm_id": f"vm-{str(i+1).zfill(3)}", "name": name}
-            for i, name in enumerate([
-                "web-server-prod-01", "web-server-prod-02", "db-server-primary",
-                "db-server-replica", "cache-server-01", "cache-server-02",
-                "api-gateway-01", "api-gateway-02", "worker-node-01",
-                "worker-node-02", "monitoring-server", "log-aggregator",
-                "backup-server", "test-env-web", "test-env-db",
-                "staging-web-01", "staging-web-02", "dev-environment",
-                "load-balancer-01", "firewall-gateway"
-            ])
-        ]
-        return vms
+        result = _self._make_request("/api/v1/vms")
+        if result:
+            return result.get("vms", [])
+        return None
     
-    @st.cache_data(ttl=60)
+    @st.cache_data(ttl=180)
+    def get_vms_summary(_self) -> Optional[Dict]:
+        """
+        Get all VMs with their health metrics and status in one call.
+        This is optimized for dashboard performance.
+        """
+        return _self._make_request("/api/v1/vms/summary")
+    
+    @st.cache_data(ttl=120)
     def get_health_score(_self, vm_id: str) -> Optional[Dict]:
         """Get health score for a specific VM."""
         return _self._make_request(f"/api/v1/health/{vm_id}")
     
-    @st.cache_data(ttl=60)
+    @st.cache_data(ttl=120)
     def get_cpu_metrics(_self, vm_id: str, limit: int = 1440) -> Optional[Dict]:
         """
         Get CPU metrics for a specific VM.

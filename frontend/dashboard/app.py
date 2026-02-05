@@ -22,26 +22,43 @@ st.set_page_config(
 # Custom CSS
 st.markdown("""
     <style>
+    /* Hide footer only */
+    footer {visibility: hidden;}
+    
+    /* Main header styling */
     .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #1f77b4;
-        margin-bottom: 1rem;
+        font-size: 2rem;
+        font-weight: 600;
+        color: #1e3a8a;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.5px;
     }
-    .metric-card {
-        background-color: #f0f2f6;
-        padding: 1.5rem;
+    
+    .main-subheader {
+        font-size: 1rem;
+        color: #64748b;
+        margin-bottom: 2rem;
+    }
+    
+    /* Metric cards */
+    [data-testid="stMetricValue"] {
+        font-size: 1.8rem;
+        font-weight: 600;
+    }
+    
+    /* Section headers */
+    h2 {
+        color: #1e293b;
+        font-weight: 600;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 0.5rem;
+        margin-top: 1.5rem;
+    }
+    
+    /* Responsive table */
+    [data-testid="stDataFrame"] {
+        border: 1px solid #e2e8f0;
         border-radius: 0.5rem;
-        text-align: center;
-    }
-    .status-healthy {
-        color: #28a745;
-    }
-    .status-warning {
-        color: #ffc107;
-    }
-    .status-critical {
-        color: #dc3545;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -50,116 +67,123 @@ st.markdown("""
 api_client = FortifyAPIClient()
 
 # Header
-st.markdown('<p class="main-header">🛡️ Project Fortify Dashboard</p>', unsafe_allow_html=True)
-st.markdown("AI-assisted infrastructure monitoring and health scoring")
+st.markdown('<p class="main-header">Project Fortify</p>', unsafe_allow_html=True)
+st.markdown('<p class="main-subheader">Infrastructure Health Monitoring & Analytics Platform</p>', unsafe_allow_html=True)
 
 # Sidebar
 with st.sidebar:
-    st.header("Navigation")
-    st.markdown("Use the pages above to navigate:")
-    st.markdown("- **Home** - System overview")
-    st.markdown("- **VM Health** - Detailed health analysis")
+    st.markdown("### Navigation")
+    st.caption("Select a page from the sidebar menu above")
     
     st.divider()
     
     # System status
-    st.subheader("System Status")
+    st.markdown("### System Health")
     status = api_client.get_system_status()
     
     if status:
         if status.get("database") == "connected":
-            st.success("✅ Database: Connected")
+            st.success("Database Online")
         else:
-            st.error("❌ Database: Disconnected")
+            st.error("Database Offline")
         
-        st.info(f"📦 API Version: {status.get('version', 'Unknown')}")
+        st.caption(f"API Version {status.get('version', 'Unknown')}")
     else:
-        st.error("❌ API: Unavailable")
+        st.error("API Unavailable")
 
 # Main content
-st.header("📊 System Overview")
+st.markdown("## System Overview")
 
-# Get all VMs
-vms = api_client.get_all_vms()
+# Get VMs summary (single API call)
+vms_summary = api_client.get_vms_summary()
 
-if vms:
+if vms_summary:
     # Summary metrics in columns
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         st.metric(
             label="Total VMs",
-            value=len(vms),
+            value=vms_summary.get("total", 0),
             delta=None
         )
     
     with col2:
-        # Calculate average health (sample from first 5 VMs for performance)
-        sample_scores = []
-        for vm in vms[:5]:
-            health_data = api_client.get_health_score(vm["vm_id"])
-            if health_data:
-                sample_scores.append(health_data.get("health_score", 0))
-        
-        avg_health = sum(sample_scores) / len(sample_scores) if sample_scores else 0
-        
         st.metric(
-            label="Avg Health Score",
-            value=f"{avg_health:.0f}/100",
+            label="Online VMs",
+            value=vms_summary.get("online", 0),
             delta=None
         )
     
     with col3:
-        # Count critical VMs (score < 50)
-        critical_count = sum(1 for score in sample_scores if score < 50)
-        
         st.metric(
-            label="Critical Alerts",
-            value=critical_count,
+            label="Offline VMs",
+            value=vms_summary.get("offline", 0),
             delta=None,
             delta_color="inverse"
         )
     
     with col4:
+        # Calculate average CPU from summary
+        vms_list = vms_summary.get("vms", [])
+        online_vms = [vm for vm in vms_list if vm.get("avg_cpu_24h") is not None]
+        avg_cpu = sum(vm["avg_cpu_24h"] for vm in online_vms) / len(online_vms) if online_vms else 0
+        
         st.metric(
-            label="Monitored Metrics",
-            value="201K+",
+            label="Avg CPU (24h)",
+            value=f"{avg_cpu:.1f}%",
             delta=None
         )
     
     st.divider()
     
-    # VM Quick Selector
-    st.subheader("🔍 Quick VM Lookup")
+    # VM Table View
+    st.markdown("## Virtual Machines")
     
-    vm_names = [f"{vm['vm_id']} - {vm['name']}" for vm in vms]
-    selected_vm_display = st.selectbox(
-        "Select a VM to view details:",
-        vm_names,
-        index=0
+    # Create DataFrame for better display
+    import pandas as pd
+    
+    df_vms = pd.DataFrame(vms_list)
+    
+    # Reorder and select columns for display
+    display_columns = {
+        "vm_id": "VM ID",
+        "name": "Name",
+        "status": "Status",
+        "current_cpu": "Current CPU (%)",
+        "avg_cpu_24h": "Avg CPU 24h (%)",
+        "metric_count_24h": "Metrics (24h)"
+    }
+    
+    df_display = df_vms[list(display_columns.keys())].copy()
+    df_display.columns = list(display_columns.values())
+    
+    # Format the dataframe
+    df_display["Current CPU (%)"] = df_display["Current CPU (%)"].apply(
+        lambda x: f"{x:.1f}" if pd.notna(x) else "N/A"
+    )
+    df_display["Avg CPU 24h (%)"] = df_display["Avg CPU 24h (%)"].apply(
+        lambda x: f"{x:.1f}" if pd.notna(x) else "N/A"
     )
     
-    # Extract vm_id from selection
-    selected_vm_id = selected_vm_display.split(" - ")[0]
+    # Display interactive table
+    st.dataframe(
+        df_display,
+        width='stretch',
+        hide_index=True,
+        column_config={
+            "Status": st.column_config.TextColumn(
+                "Status",
+                help="VM online/offline status",
+            ),
+            "VM ID": st.column_config.TextColumn(
+                "VM ID",
+                help="Virtual Machine Identifier",
+            )
+        }
+    )
     
-    if st.button("View Health Details", type="primary"):
-        st.info(f"Navigate to **VM Health** page in the sidebar and select {selected_vm_id}")
-    
-    st.divider()
-    
-    # Recent Activity / VM List
-    st.subheader("📋 Virtual Machines")
-    
-    # Display VMs in a grid
-    cols_per_row = 4
-    for i in range(0, len(vms), cols_per_row):
-        cols = st.columns(cols_per_row)
-        for j, col in enumerate(cols):
-            if i + j < len(vms):
-                vm = vms[i + j]
-                with col:
-                    st.markdown(f"**{vm['vm_id']}**")
-                    st.caption(vm['name'])
+    st.caption(f"Displaying {len(vms_list)} virtual machines | Last updated: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
 else:
     st.warning("⚠️ Unable to load VM data. Please check API connection.")

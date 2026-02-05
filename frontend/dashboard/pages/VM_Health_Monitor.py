@@ -17,7 +17,7 @@ from helpers import get_health_status_class, export_to_csv
 
 # Page configuration
 st.set_page_config(
-    page_title="VM Health - Project Fortify",
+    page_title="VM Health Monitor - Project Fortify",
     page_icon="🏥",
     layout="wide"
 )
@@ -28,48 +28,74 @@ api_client = FortifyAPIClient()
 # Custom CSS
 st.markdown("""
     <style>
-    .health-score-excellent { color: #28a745; font-weight: bold; }
-    .health-score-good { color: #5cb85c; font-weight: bold; }
-    .health-score-warning { color: #ffc107; font-weight: bold; }
-    .health-score-critical { color: #dc3545; font-weight: bold; }
-    .component-label { font-size: 0.9rem; color: #666; }
+    /* Hide footer only */
+    footer {visibility: hidden;}
+    
+    .health-score-excellent { color: #059669; font-weight: 600; }
+    .health-score-good { color: #10b981; font-weight: 600; }
+    .health-score-warning { color: #f59e0b; font-weight: 600; }
+    .health-score-critical { color: #dc2626; font-weight: 600; }
+    .component-label { font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem; }
+    
+    h1 {
+        color: #1e293b;
+        font-weight: 600;
+        font-size: 2rem;
+    }
+    
+    h2 {
+        color: #1e293b;
+        font-weight: 600;
+        font-size: 1.5rem;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 0.5rem;
+        margin-top: 1.5rem;
+    }
+    
+    h3 {
+        color: #334155;
+        font-weight: 600;
+        font-size: 1.25rem;
+    }
     </style>
 """, unsafe_allow_html=True)
 
 # Header
-st.title("🏥 VM Health Analysis")
-st.markdown("Detailed health scoring and performance metrics")
+st.title("VM Health Monitor")
+st.caption("Real-time health scoring and performance analytics")
 
 # Sidebar - VM Selection
 with st.sidebar:
-    st.header("VM Selection")
+    st.markdown("### VM Selection")
     
-    # Get all VMs
-    vms = api_client.get_all_vms()
+    # Get VMs from summary (faster, cached)
+    vms_summary = api_client.get_vms_summary()
     
-    if vms:
+    if vms_summary:
+        vms = vms_summary.get("vms", [])
         vm_options = {f"{vm['vm_id']} - {vm['name']}": vm['vm_id'] for vm in vms}
         selected_display = st.selectbox(
             "Select Virtual Machine:",
             list(vm_options.keys()),
-            index=0
+            index=0,
+            label_visibility="collapsed"
         )
         selected_vm_id = vm_options[selected_display]
         
         st.divider()
         
         # Refresh button
-        if st.button("🔄 Refresh Data", width='stretch'):
+        if st.button("Refresh Data", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
         
         # Auto-refresh toggle
-        auto_refresh = st.checkbox("Auto-refresh (5 min)")
+        auto_refresh = st.checkbox("Auto-refresh (5 min)", value=False)
         
         if auto_refresh:
-            st.info("⏱️ Auto-refresh enabled")
+            st.caption("Auto-refresh enabled")
     else:
-        st.error("❌ Unable to load VMs")
+        st.error("Unable to load VMs")
         selected_vm_id = None
 
 # Main content
@@ -86,7 +112,7 @@ if selected_vm_id:
         metrics_analyzed = health_data.get("metrics_analyzed", 0)
         
         # Display VM info
-        st.subheader(f"📊 {selected_vm_id} - {vm_name}")
+        st.markdown(f"### {selected_vm_id} - {vm_name}")
         
         # Health Score Section
         col1, col2, col3 = st.columns([2, 3, 2])
@@ -100,7 +126,7 @@ if selected_vm_id:
             
             # Create and display gauge
             fig_gauge = create_health_gauge(health_score)
-            st.plotly_chart(fig_gauge, width='stretch')
+            st.plotly_chart(fig_gauge, use_container_width=True)
             
             st.markdown(f"<p class='{css_class}' style='text-align: center; font-size: 1.2rem;'>{status}</p>", unsafe_allow_html=True)
         
@@ -147,7 +173,7 @@ if selected_vm_id:
         st.divider()
         
         # CPU Metrics Time Series
-        st.markdown("### 📉 CPU Metrics (Last 24 Hours)")
+        st.markdown("## CPU Metrics Analysis")
         
         # Time range selector
         col1, col2 = st.columns([3, 1])
@@ -158,9 +184,8 @@ if selected_vm_id:
                 index=3
             )
         with col2:
-            if st.button("📥 Export CSV"):
-                # Will implement export
-                st.info("Export functionality coming soon!")
+            if st.button("Export CSV"):
+                st.info("Export functionality coming soon")
         
         # Map time range to limit
         time_range_map = {
@@ -184,7 +209,7 @@ if selected_vm_id:
                 anomalous_indices if anomalous_indices and len(anomalous_indices) < len(metrics_list) else None,
                 height=400
             )
-            st.plotly_chart(fig_timeseries, width='stretch')
+            st.plotly_chart(fig_timeseries, use_container_width=True)
             
             # Export data preparation
             if st.session_state.get('export_csv', False):
@@ -211,12 +236,12 @@ if selected_vm_id:
             with col4:
                 st.metric("Current CPU", f"{df['cpu_percent'].iloc[-1]:.2f}%")
         else:
-            st.warning("⚠️ No CPU metrics available for this VM")
+            st.warning("No CPU metrics available for this VM")
         
     else:
-        st.error("❌ Unable to load health data for this VM")
+        st.error("Unable to load health data for this VM")
 else:
-    st.info("👈 Please select a VM from the sidebar")
+    st.info("Please select a VM from the sidebar")
 
 # Footer
 st.divider()
