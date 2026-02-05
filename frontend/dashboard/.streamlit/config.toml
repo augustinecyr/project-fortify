@@ -1,0 +1,10 @@
+[ui]
+hideTopBar = false
+hideSidebarNav = false
+
+[client]
+toolbarMode = "minimal"
+
+[server]
+enableXsrfProtection = true
+enableCORS = false

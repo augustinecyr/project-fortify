@@ -19,7 +19,11 @@ from helpers import get_health_status_class, export_to_csv
 st.set_page_config(
     page_title="VM Health Monitor - Project Fortify",
     page_icon="🏥",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'About': "Project Fortify - Infrastructure Health Monitoring Platform v0.1.0"
+    }
 )
 
 # Initialize API client
@@ -175,8 +179,8 @@ if selected_vm_id:
         # CPU Metrics Time Series
         st.markdown("## CPU Metrics Analysis")
         
-        # Time range selector
-        col1, col2 = st.columns([3, 1])
+        # Time range selector and export button
+        col1, col2, col3 = st.columns([3, 1, 1])
         with col1:
             time_range = st.selectbox(
                 "Time Range:",
@@ -184,8 +188,11 @@ if selected_vm_id:
                 index=3
             )
         with col2:
-            if st.button("Export CSV"):
+            st.markdown("<div style='padding-top: 28px;'></div>", unsafe_allow_html=True)
+            if st.button("Export CSV", use_container_width=True):
                 st.info("Export functionality coming soon")
+        with col3:
+            pass  # Empty column for spacing
         
         # Map time range to limit
         time_range_map = {
