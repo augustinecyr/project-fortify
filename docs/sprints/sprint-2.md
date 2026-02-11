@@ -224,6 +224,3 @@ streamlit run app.py --server.runOnSave=true
 ```
 
 ---
-
-Version: 1.0  
-Last Updated: [Date]
