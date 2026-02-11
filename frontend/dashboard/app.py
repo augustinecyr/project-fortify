@@ -98,7 +98,8 @@ with st.sidebar:
 st.markdown("## System Overview")
 
 # Get VMs summary (single API call)
-vms_summary = api_client.get_vms_summary()
+with st.spinner("Loading system data..."):
+    vms_summary = api_client.get_vms_summary()
 
 if vms_summary:
     # Summary metrics in columns

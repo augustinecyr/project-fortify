@@ -89,7 +89,7 @@ with st.sidebar:
         st.divider()
         
         # Refresh button
-        if st.button("Refresh Data", use_container_width=True):
+        if st.button("Refresh Data", width='stretch'):
             st.cache_data.clear()
             st.rerun()
         
@@ -98,14 +98,16 @@ with st.sidebar:
         
         if auto_refresh:
             st.caption("Auto-refresh enabled")
+        
     else:
         st.error("Unable to load VMs")
         selected_vm_id = None
 
 # Main content
 if selected_vm_id:
-    # Fetch health data
-    health_data = api_client.get_health_score(selected_vm_id)
+    # Fetch health data with spinner
+    with st.spinner("Loading health data..."):
+        health_data = api_client.get_health_score(selected_vm_id)
     
     if health_data:
         # Extract data
@@ -117,6 +119,11 @@ if selected_vm_id:
         
         # Display VM info
         st.markdown(f"### {selected_vm_id} - {vm_name}")
+        
+        # Export button at the top - simple and clear
+        col1, col2 = st.columns([6, 1])
+        with col2:
+            export_button = st.button("Export Report", width='stretch')
         
         # Health Score Section
         col1, col2, col3 = st.columns([2, 3, 2])
@@ -130,7 +137,7 @@ if selected_vm_id:
             
             # Create and display gauge
             fig_gauge = create_health_gauge(health_score)
-            st.plotly_chart(fig_gauge, use_container_width=True)
+            st.plotly_chart(fig_gauge, width='stretch')
             
             st.markdown(f"<p class='{css_class}' style='text-align: center; font-size: 1.2rem;'>{status}</p>", unsafe_allow_html=True)
         
@@ -158,7 +165,7 @@ if selected_vm_id:
             st.caption(f"{historical_score:.1f}/100")
             
             st.divider()
-            st.caption(f"📈 Analyzed {metrics_analyzed:,} data points")
+            st.caption(f"Analyzed {metrics_analyzed:,} data points")
         
         with col3:
             # Anomaly details
@@ -179,20 +186,12 @@ if selected_vm_id:
         # CPU Metrics Time Series
         st.markdown("## CPU Metrics Analysis")
         
-        # Time range selector and export button
-        col1, col2, col3 = st.columns([3, 1, 1])
-        with col1:
-            time_range = st.selectbox(
-                "Time Range:",
-                ["Last 1 Hour", "Last 6 Hours", "Last 12 Hours", "Last 24 Hours"],
-                index=3
-            )
-        with col2:
-            st.markdown("<div style='padding-top: 28px;'></div>", unsafe_allow_html=True)
-            if st.button("Export CSV", use_container_width=True):
-                st.info("Export functionality coming soon")
-        with col3:
-            pass  # Empty column for spacing
+        # Time range selector
+        time_range = st.selectbox(
+            "Time Range:",
+            ["Last 1 Hour", "Last 6 Hours", "Last 12 Hours", "Last 24 Hours"],
+            index=3
+        )
         
         # Map time range to limit
         time_range_map = {
@@ -203,7 +202,8 @@ if selected_vm_id:
         }
         limit = time_range_map.get(time_range, 1440)
         
-        metrics_data = api_client.get_cpu_metrics(selected_vm_id, limit=limit)
+        with st.spinner("Loading CPU metrics..."):
+            metrics_data = api_client.get_cpu_metrics(selected_vm_id, limit=limit)
         
         if metrics_data and metrics_data.get("metrics"):
             metrics_list = metrics_data["metrics"]
@@ -216,17 +216,7 @@ if selected_vm_id:
                 anomalous_indices if anomalous_indices and len(anomalous_indices) < len(metrics_list) else None,
                 height=400
             )
-            st.plotly_chart(fig_timeseries, use_container_width=True)
-            
-            # Export data preparation
-            if st.session_state.get('export_csv', False):
-                csv_data = export_to_csv(metrics_list, f"{selected_vm_id}_metrics.csv")
-                st.download_button(
-                    label="📥 Download CSV",
-                    data=csv_data,
-                    file_name=f"{selected_vm_id}_metrics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                    mime="text/csv"
-                )
+            st.plotly_chart(fig_timeseries, width='stretch')
             
             # Create DataFrame for statistics
             df = pd.DataFrame(metrics_list)
@@ -242,13 +232,132 @@ if selected_vm_id:
                 st.metric("Avg CPU", f"{df['cpu_percent'].mean():.2f}%")
             with col4:
                 st.metric("Current CPU", f"{df['cpu_percent'].iloc[-1]:.2f}%")
+            
+            # Handle export when button is clicked
+            if export_button:
+                # Combine all data into one structured format
+                export_data = {
+                    "export_info": {
+                        "export_timestamp": datetime.now().isoformat(),
+                        "vm_id": selected_vm_id,
+                        "vm_name": vm_name,
+                        "time_range": time_range
+                    },
+                    "health_summary": {
+                        "health_score": health_score,
+                        "health_status": status,
+                        "anomaly_score": anomaly_score,
+                        "stability_score": stability_score,
+                        "historical_score": historical_score,
+                        "metrics_analyzed": metrics_analyzed
+                    },
+                    "anomaly_details": {
+                        "anomaly_count": anomaly_count,
+                        "total_points": total_points,
+                        "mean_cpu": mean_cpu,
+                        "std_dev": std_dev
+                    },
+                    "cpu_statistics": {
+                        "min_cpu": float(df['cpu_percent'].min()),
+                        "max_cpu": float(df['cpu_percent'].max()),
+                        "avg_cpu": float(df['cpu_percent'].mean()),
+                        "current_cpu": float(df['cpu_percent'].iloc[-1])
+                    },
+                    "detailed_metrics": metrics_list
+                }
+                
+                # Create CSV content
+                import io
+                import json
+                
+                # Create a CSV with summary first, then detailed metrics
+                csv_buffer = io.StringIO()
+                
+                # Write header
+                csv_buffer.write("VM Health Report\n")
+                csv_buffer.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                csv_buffer.write(f"VM ID: {selected_vm_id}\n")
+                csv_buffer.write(f"VM Name: {vm_name}\n")
+                csv_buffer.write(f"Time Range: {time_range}\n")
+                csv_buffer.write("\n")
+                
+                # Write health summary section
+                csv_buffer.write("HEALTH SUMMARY\n")
+                summary_df = pd.DataFrame([
+                    ["Health Score", f"{health_score:.1f}"],
+                    ["Health Status", status],
+                    ["Anomaly Score", f"{anomaly_score:.1f}"],
+                    ["Stability Score", f"{stability_score:.1f}"],
+                    ["Historical Score", f"{historical_score:.1f}"],
+                    ["Metrics Analyzed", f"{metrics_analyzed:,}"]
+                ])
+                summary_df.to_csv(csv_buffer, header=False, index=False)
+                csv_buffer.write("\n")
+                
+                # Write anomaly details section
+                csv_buffer.write("ANOMALY DETAILS\n")
+                anomaly_df = pd.DataFrame([
+                    ["Anomalies Detected", anomaly_count],
+                    ["Total Data Points", total_points],
+                    ["Average CPU", f"{mean_cpu:.1f}%"],
+                    ["Std Deviation", f"{std_dev:.1f}"]
+                ])
+                anomaly_df.to_csv(csv_buffer, header=False, index=False)
+                csv_buffer.write("\n")
+                
+                # Write CPU statistics section
+                csv_buffer.write("CPU STATISTICS\n")
+                stats_df = pd.DataFrame([
+                    ["Minimum CPU", f"{df['cpu_percent'].min():.2f}%"],
+                    ["Maximum CPU", f"{df['cpu_percent'].max():.2f}%"],
+                    ["Average CPU", f"{df['cpu_percent'].mean():.2f}%"],
+                    ["Current CPU", f"{df['cpu_percent'].iloc[-1]:.2f}%"]
+                ])
+                stats_df.to_csv(csv_buffer, header=False, index=False)
+                csv_buffer.write("\n")
+                
+                # Write detailed metrics section
+                csv_buffer.write("DETAILED METRICS\n")
+                metrics_df = pd.DataFrame(metrics_list)
+                metrics_df.to_csv(csv_buffer, index=False)
+                
+                # Create JSON content as well
+                json_buffer = io.StringIO()
+                json.dump(export_data, json_buffer, indent=2, default=str)
+                
+                # Create tabs for different export formats
+                st.divider()
+                st.markdown("### Export Options")
+                
+                tab1, tab2 = st.tabs(["CSV Format", "JSON Format"])
+                
+                with tab1:
+                    st.download_button(
+                        label="Download CSV Report",
+                        data=csv_buffer.getvalue(),
+                        file_name=f"{selected_vm_id}_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv",
+                        key="csv_export"
+                    )
+                    st.caption("CSV format includes all data in a structured format with sections")
+                
+                with tab2:
+                    st.download_button(
+                        label="Download JSON Report",
+                        data=json_buffer.getvalue(),
+                        file_name=f"{selected_vm_id}_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                        mime="application/json",
+                        key="json_export"
+                    )
+                    st.caption("JSON format includes structured data with nested objects")
+        
         else:
-            st.warning("No CPU metrics available for this VM")
+            st.warning("No CPU metrics available for the selected time range. Try selecting a longer time period.")
         
     else:
-        st.error("Unable to load health data for this VM")
+        st.error("Unable to load health data for this VM. Please check if the VM exists and try refreshing.")
 else:
-    st.info("Please select a VM from the sidebar")
+    st.info("Please select a VM from the sidebar to view health analysis.")
 
 # Footer
 st.divider()
