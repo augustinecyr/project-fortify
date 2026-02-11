@@ -16,6 +16,21 @@ st.set_page_config(
     }
 )
 
+# In app.py, after st.set_page_config
+st.markdown("""
+<style>
+    /* Hide the entire running status container */
+    .stApp header [data-testid="stStatusWidget"] {
+        display: none !important;
+    }
+    
+    /* Alternative: Hide only the stop button */
+    .stApp header button[kind="header"] {
+        display: none !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 sys.path.insert(0, str(Path(__file__).parent / "utils"))
 
 # Pages with Material Icons
