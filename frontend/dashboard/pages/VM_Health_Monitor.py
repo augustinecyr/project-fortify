@@ -1,7 +1,10 @@
 """
-VM Health Page - Final working version.
-Uses components/health_widget.py, components/charts.py, utils/export.py.
-All fixes applied: dynamic mean, anomalies only for 24h, one-click export.
+VM Health Page - Improved version.
+Fixes:
+- Anomaly detection only applies to 24h view (prevents index mismatch)
+- Dynamic mean calculation per time range
+- Consistent export button styling (removed type parameter)
+- Better chart visibility with dynamic y-axis
 """
 import streamlit as st
 import pandas as pd
@@ -112,19 +115,22 @@ if selected_vm_id:
         df = pd.DataFrame(metrics_list)
         df['timestamp'] = pd.to_datetime(df['timestamp'])
 
-        # ---- PLOTLY CHART (dynamic mean, anomalies only for 24h) ----
+        # ---- PLOTLY CHART ----
+        # Calculate mean from CURRENT time range data (not 24h global)
         current_mean = df['cpu_percent'].mean()
+        
+        # Only apply anomaly detection for 24h view to prevent index mismatch
         anomalous_indices = []
         if time_range == "Last 24 Hours":
             anomalous_indices = anomaly_details.get("anomalous_indices", [])
-            # Keep only valid indices (within current metrics length)
-            anomalous_indices = [i for i in anomalous_indices if i < len(metrics_list)]
+            # Validate indices are within bounds of current dataset
+            anomalous_indices = [i for i in anomalous_indices if 0 <= i < len(metrics_list)]
 
         fig = create_cpu_timeseries(
             metrics_list,
             current_mean,
             anomalous_indices,
-            height=400
+            height=450
         )
         st.plotly_chart(fig, width='stretch')
 
@@ -137,8 +143,9 @@ if selected_vm_id:
 
         st.divider()
 
-        # ---- ONE-CLICK EXPORT ----
+        # ---- ONE-CLICK EXPORT (with spinner animation) ----
         st.markdown("### Export Report")
+        
         fmt = st.radio("Format", ["CSV", "JSON"], horizontal=True, label_visibility="collapsed")
 
         export_data = {
@@ -155,21 +162,28 @@ if selected_vm_id:
         }
         ts = datetime.now().strftime('%Y%m%d_%H%M%S')
 
+        # Function to generate report with buffer for spinner visibility
+        def generate_report_with_buffer():
+            import time
+            time.sleep(0.3)  # Small buffer to ensure spinner appears
+            if fmt == "CSV":
+                return generate_csv_report(selected_vm_id, vm_name, export_data, df, time_range)
+            else:
+                return generate_json_report(selected_vm_id, vm_name, export_data, metrics_list, time_range)
+
         if fmt == "CSV":
             st.download_button(
                 label="Export",
-                data=lambda: generate_csv_report(selected_vm_id, vm_name, export_data, df, time_range),
+                data=generate_report_with_buffer,
                 file_name=f"{selected_vm_id}_report_{ts}.csv",
-                mime="text/csv",
-                type="primary"
+                mime="text/csv"
             )
         else:
             st.download_button(
                 label="Export",
-                data=lambda: generate_json_report(selected_vm_id, vm_name, export_data, metrics_list, time_range),
+                data=generate_report_with_buffer,
                 file_name=f"{selected_vm_id}_report_{ts}.json",
-                mime="application/json",
-                type="primary"
+                mime="application/json"
             )
 
     except Exception as e:
