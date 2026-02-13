@@ -1,175 +1,87 @@
 """
-Reusable chart components for the dashboard.
+Chart components for VM Health monitoring.
+Always returns a valid Plotly Figure – never None.
 """
 import plotly.graph_objects as go
 import pandas as pd
-from typing import List, Dict
 
-
-def create_health_gauge(health_score: int, height: int = 300) -> go.Figure:
+def create_cpu_timeseries(metrics_list, mean_cpu, anomalous_indices=None, height=400):
     """
-    Create a health score gauge chart.
-    
-    Args:
-        health_score: Health score value (0-100)
-        height: Chart height in pixels
-    
-    Returns:
-        Plotly figure object
+    Create a time series chart of CPU metrics with optional anomaly highlights.
+    Returns a Plotly Figure in all cases (even with empty data).
     """
-    # Determine color and status
-    if health_score >= 80:
-        color = "#28a745"
-        status = "Excellent"
-    elif health_score >= 65:
-        color = "#5cb85c"
-        status = "Good"
-    elif health_score >= 50:
-        color = "#ffc107"
-        status = "Warning"
-    else:
-        color = "#dc3545"
-        status = "Critical"
-    
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=health_score,
-        domain={'x': [0, 1], 'y': [0, 1]},
-        title={'text': status, 'font': {'size': 20}},
-        gauge={
-            'axis': {'range': [None, 100], 'tickwidth': 1},
-            'bar': {'color': color},
-            'bgcolor': "white",
-            'borderwidth': 2,
-            'bordercolor': "gray",
-            'steps': [
-                {'range': [0, 50], 'color': '#ffebee'},
-                {'range': [50, 65], 'color': '#fff9c4'},
-                {'range': [65, 80], 'color': '#e8f5e9'},
-                {'range': [80, 100], 'color': '#c8e6c9'}
-            ],
-            'threshold': {
-                'line': {'color': "red", 'width': 4},
-                'thickness': 0.75,
-                'value': 50
-            }
-        }
-    ))
-    
-    fig.update_layout(
-        height=height,
-        margin=dict(l=20, r=20, t=40, b=20)
-    )
-    
-    return fig
-
-
-def create_cpu_timeseries(
-    metrics: List[Dict],
-    mean_cpu: float,
-    anomalous_indices: List[int] = None,
-    height: int = 400
-) -> go.Figure:
-    """
-    Create CPU metrics time-series chart with anomaly highlights.
-    
-    Args:
-        metrics: List of metric dictionaries
-        mean_cpu: Mean CPU value for reference line
-        anomalous_indices: List of indices where anomalies occurred
-        height: Chart height in pixels
-    
-    Returns:
-        Plotly figure object
-    """
-    df = pd.DataFrame(metrics)
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
-    
+    # --- Default empty figure with "No data" message ---
     fig = go.Figure()
-    
-    # Add CPU line
-    fig.add_trace(go.Scatter(
-        x=df['timestamp'],
-        y=df['cpu_percent'],
-        mode='lines',
-        name='CPU Usage',
-        line=dict(color='#1f77b4', width=2),
-        hovertemplate='<b>Time</b>: %{x}<br><b>CPU</b>: %{y:.2f}%<extra></extra>'
-    ))
-    
-    # Add mean line
-    fig.add_hline(
-        y=mean_cpu,
-        line_dash="dash",
-        line_color="green",
-        annotation_text=f"Mean: {mean_cpu:.1f}%",
-        annotation_position="right"
+    fig.add_annotation(
+        text="No CPU metrics available",
+        xref="paper", yref="paper",
+        x=0.5, y=0.5, showarrow=False,
+        font=dict(size=16, color="#64748b")
     )
-    
-    # Highlight anomalies
-    if anomalous_indices and len(anomalous_indices) > 0:
-        # Filter indices that are within the current dataframe range
-        valid_indices = [i for i in anomalous_indices if i < len(df)]
-        
-        if valid_indices:
-            anomaly_df = df.iloc[valid_indices]
+    fig.update_layout(height=height)
+
+    # If we have real data, replace with proper chart
+    if metrics_list and len(metrics_list) > 0:
+        try:
+            df = pd.DataFrame(metrics_list)
+            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            
+            # Create new figure
+            fig = go.Figure()
+            
+            # CPU line
             fig.add_trace(go.Scatter(
-                x=anomaly_df['timestamp'],
-                y=anomaly_df['cpu_percent'],
-                mode='markers',
-                name='Anomalies',
-                marker=dict(color='red', size=8, symbol='x'),
-                hovertemplate='<b>Anomaly</b><br><b>Time</b>: %{x}<br><b>CPU</b>: %{y:.2f}%<extra></extra>'
+                x=df['timestamp'],
+                y=df['cpu_percent'],
+                mode='lines',
+                name='CPU %',
+                line=dict(color='#1f77b4', width=2),
+                hovertemplate='%{y:.1f}%<extra></extra>'
             ))
-    
-    fig.update_layout(
-        title="CPU Utilization Over Time",
-        xaxis_title="Time",
-        yaxis_title="CPU Usage (%)",
-        hovermode='x unified',
-        height=height,
-        showlegend=True
-    )
-    
-    return fig
-
-
-def create_component_bars(components: Dict[str, float]) -> go.Figure:
-    """
-    Create horizontal bar chart for score components.
-    
-    Args:
-        components: Dictionary of component scores (0-1 range)
-    
-    Returns:
-        Plotly figure object
-    """
-    # Convert to percentages
-    data = {
-        'Anomaly Detection': components.get('anomaly_score', 0) * 100,
-        'Stability': components.get('stability_score', 0) * 100,
-        'Historical Performance': components.get('historical_score', 0) * 100
-    }
-    
-    colors = ['#1f77b4', '#ff7f0e', '#2ca02c']
-    
-    fig = go.Figure(go.Bar(
-        x=list(data.values()),
-        y=list(data.keys()),
-        orientation='h',
-        marker=dict(color=colors),
-        text=[f"{v:.1f}" for v in data.values()],
-        textposition='auto',
-        hovertemplate='<b>%{y}</b><br>Score: %{x:.1f}/100<extra></extra>'
-    ))
-    
-    fig.update_layout(
-        title="Score Component Breakdown",
-        xaxis_title="Score (0-100)",
-        yaxis_title="",
-        height=250,
-        showlegend=False,
-        xaxis=dict(range=[0, 100])
-    )
+            
+            # Mean line
+            fig.add_hline(
+                y=mean_cpu,
+                line_dash="dash",
+                line_color="#64748b",
+                opacity=0.5,
+                annotation_text=f"Avg: {mean_cpu:.1f}%",
+                annotation_position="bottom right"
+            )
+            
+            # Anomaly points
+            if anomalous_indices and len(anomalous_indices) > 0:
+                valid_indices = [i for i in anomalous_indices if i < len(df)]
+                if valid_indices:
+                    anomaly_df = df.iloc[valid_indices]
+                    fig.add_trace(go.Scatter(
+                        x=anomaly_df['timestamp'],
+                        y=anomaly_df['cpu_percent'],
+                        mode='markers',
+                        name='Anomalies',
+                        marker=dict(color='#ef4444', size=8, symbol='circle'),
+                        hovertemplate='Anomaly: %{y:.1f}%<extra></extra>'
+                    ))
+            
+            # Layout
+            fig.update_layout(
+                height=height,
+                margin=dict(l=40, r=40, t=20, b=40),
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1
+                ),
+                xaxis_title="Time",
+                yaxis_title="CPU Usage (%)",
+                yaxis=dict(range=[0, 100]),
+                hovermode='x unified',
+                template='plotly_white'
+            )
+        except Exception:
+            # If anything fails, return the safe "No data" figure
+            pass  # fig is already the empty figure
     
     return fig
