@@ -40,7 +40,14 @@ pages = {
         st.Page("pages/vm_health_monitor.py", title="VM Health", icon=":material/health_and_safety:"),
     ],
     "Reports": [
-        # Future pages (e.g., :material/description:, :material/bar_chart:)
+        st.Page("pages/export_report.py", title="Export Report", icon=":material/download:"),
+        # Future: st.Page("pages/scheduled_reports.py", title="Scheduled Reports", icon=":material/schedule:"),
+    ],
+    "Optimization": [
+        st.Page("pages/optimization.py", title="Cost Optimization", icon=":material/trending_down:"),
+    ],
+    "Security": [
+        st.Page("pages/security_analytics.py", title="Security Analytics", icon=":material/security:"),  # if placed in root, else "pages/security.py"
     ]
 }
 

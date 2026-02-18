@@ -20,7 +20,6 @@ try:
     from helpers import get_health_status_class
     from components.charts import create_cpu_timeseries
     from components.health_widget import render_health_score
-    from utils.export import generate_csv_report, generate_json_report
 except ImportError as e:
     st.error(f"Import failed: {e}. Make sure all component files exist.")
     st.stop()
@@ -72,38 +71,40 @@ if not vms_summary:
     st.stop()
 
 vms = vms_summary.get("vms", [])
-vm_options = {f"{vm['vm_id']} - {vm['name']}": vm['vm_id'] for vm in vms}
+
+# Sort VMs by VM ID for consistent ordering
+sorted_vms = sorted(vms, key=lambda x: x['vm_id'])
+
+# Create a list of display strings and a mapping back to VM ID
+vm_display_list = [f"{vm['vm_id']} - {vm['name']}" for vm in sorted_vms]
+vm_id_by_display = {display: vm['vm_id'] for display, vm in zip(vm_display_list, sorted_vms)}
 
 # ---- READ QUERY PARAMETER ----
 query_params = st.query_params
 preselected_vm = query_params.get("vm", None)
 default_index = 0
 if preselected_vm:
-    for i, (display, vm_id) in enumerate(vm_options.items()):
-        if vm_id == preselected_vm:
+    for i, display in enumerate(vm_display_list):
+        if vm_id_by_display[display] == preselected_vm:
             default_index = i
             break
 
-# ---- TOP ROW: VM SELECTOR + REFRESH + EXPORT BUTTONS ----
-col_sel, col_refresh, col_csv, col_json = st.columns([3, 0.5, 1.5, 1.5])
+# ---- TOP ROW: VM SELECTOR + REFRESH BUTTONS ----
+col_sel, col_refresh = st.columns([3, 0.5])
 with col_sel:
     selected_display = st.selectbox(
         "Select Virtual Machine",
-        list(vm_options.keys()),
+        vm_display_list,          # Use the sorted list directly
         index=default_index,
         label_visibility="collapsed",
         placeholder="Choose a VM...",
         key="vm_selector"
     )
-    selected_vm_id = vm_options[selected_display]
-
+    selected_vm_id = vm_id_by_display[selected_display]
 with col_refresh:
     if st.button("🔄", help="Refresh data"):
         st.cache_data.clear()
         st.rerun()
-
-csv_btn = col_csv.empty()
-json_btn = col_json.empty()
 
 # ---- FETCH DETAILED VM INFO ----
 # CRITICAL FIX: Need to fetch individual VM details from API
@@ -129,7 +130,7 @@ if not health_data:
     st.stop()
 
 # ---- DEBUG: Show what data we actually have ----
-with st.expander("🔍 Debug: Available VM Data", expanded=False):
+with st.expander("🔍 Preview Data", expanded=False):
     st.write("**VM Details from Summary:**")
     st.json(vm_details)
     st.write("**Available Keys:**")
@@ -400,82 +401,6 @@ else:
     stat_col2.metric("Maximum", f"{df['cpu_percent'].max():.1f}%")
     stat_col3.metric("Average", f"{df['cpu_percent'].mean():.1f}%")
     stat_col4.metric("Current", f"{df['cpu_percent'].iloc[-1]:.1f}%")
-
-    # ---- EXPORT BUTTONS ----
-    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
-    
-    export_data = {
-        "vm_id": selected_vm_id,
-        "vm_name": vm_name,
-        "status": vm_status,
-        "host": host if host != "Not available in API" else None,
-        "os_version": os_version if os_version != "Not available in API" else None,
-        "uptime_hours": uptime_hours,
-        "health_score": health_score,
-        "health_status": status,
-        "security_score": security_score,
-        "anomaly_score": comp_scores["anomaly_score"],
-        "stability_score": comp_scores["stability_score"],
-        "historical_score": comp_scores["historical_score"],
-        "current_cpu": current_cpu,
-        "current_memory": current_memory,
-        "current_disk": current_disk,
-        "memory_total_mb": memory_total_mb,
-        "memory_used_mb": memory_used_mb,
-        "disk_total_gb": disk_total_gb,
-        "disk_used_gb": disk_used_gb,
-        "network_in_mbps": network_in,
-        "network_out_mbps": network_out,
-        "open_vulnerabilities": open_vulns,
-        "critical_vulnerabilities": critical_vulns,
-        "last_patch_date": str(last_patch) if last_patch else None,
-        "compliance_score": compliance,
-        "firewall_enabled": firewall,
-        "ssh_key_auth": ssh_key,
-        "disk_encryption": encryption,
-        "alert_count": alert_count,
-        "anomaly_detected": vm_details.get("anomaly_detected", False),
-        "metrics_analyzed": metrics_analyzed,
-        "anomaly_count": anomaly_details.get("anomaly_count", 0),
-        "total_points": anomaly_details.get("total_points", 0),
-        "mean_cpu": anomaly_details.get("mean", 0),
-        "std_dev": anomaly_details.get("std_dev", 0),
-    }
-    
-    csv_report = functools.partial(
-        generate_csv_report,
-        vm_id=selected_vm_id,
-        vm_name=vm_name,
-        health_data=export_data,
-        metrics_df=df,
-        time_range=time_range
-    )
-    
-    json_report = functools.partial(
-        generate_json_report,
-        vm_id=selected_vm_id,
-        vm_name=vm_name,
-        health_data=export_data,
-        metrics_list=metrics_list,
-        time_range=time_range
-    )
-    
-    with csv_btn:
-        st.download_button(
-            label="📥 Export CSV",
-            data=csv_report,
-            file_name=f"{selected_vm_id}_report_{ts}.csv",
-            mime="text/csv",
-            width='stretch'
-        )
-    with json_btn:
-        st.download_button(
-            label="📥 Export JSON",
-            data=json_report,
-            file_name=f"{selected_vm_id}_report_{ts}.json",
-            mime="application/json",
-            width='stretch'
-        )
 
 # ---- FOOTER ----
 st.divider()
