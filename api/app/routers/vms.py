@@ -10,6 +10,8 @@ from typing import List
 from fastapi import Request
 from app.db.database import get_db
 from app.db.models import VirtualMachine, CPUMetric, HealthScore
+from app.models.schemas import VMUpdate
+from datetime import datetime
 
 router = APIRouter(prefix="/api/v1", tags=["vms"])
 
@@ -345,3 +347,25 @@ async def create_cpu_metric(
     db.commit()
     
     return {"status": "success", "id": db_metric.id}
+
+@router.patch("/vms/{vm_id}")
+async def update_vm(vm_id: str, update_data: VMUpdate, db: Session = Depends(get_db)):
+    """
+    Update VM fields (partial update). Used by the metrics simulator to keep VM state current.
+    """
+    vm = db.query(VirtualMachine).filter(VirtualMachine.vm_id == vm_id).first()
+    if not vm:
+        raise HTTPException(status_code=404, detail=f"VM '{vm_id}' not found")
+    
+    # Update only the fields that are provided
+    update_dict = update_data.dict(exclude_unset=True)
+    for key, value in update_dict.items():
+        setattr(vm, key, value)
+    
+    # Update the 'updated_at' timestamp if your model has it
+    if hasattr(vm, 'updated_at'):
+        vm.updated_at = datetime.utcnow()
+    
+    db.commit()
+    
+    return {"status": "updated", "vm_id": vm_id}
