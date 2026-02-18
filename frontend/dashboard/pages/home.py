@@ -1,12 +1,14 @@
 """
 Project Fortify - Home Dashboard
 Modern card-based system overview with VM fleet monitoring.
+Enhanced with donut chart and improved table columns.
 """
 import streamlit as st
 import sys
 from pathlib import Path
 import pandas as pd
 from datetime import datetime
+import plotly.graph_objects as go
 
 # Add utils to path (needed for API client)
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "utils"))
@@ -43,6 +45,10 @@ st.markdown("""
         box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
         transition: all 0.2s ease;
         margin-bottom: 1rem;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
     .metric-card:hover {
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -123,31 +129,24 @@ st.markdown("""
         margin-bottom: 1.5rem;
     }
     
-    /* Fleet Score Card */
-    .score-card {
-        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    /* Fleet Health Score Card - Now same size as others */
+    .health-score-card {
+        background: white;
+        border: 1px solid #e2e8f0;
         border-radius: 12px;
-        padding: 2rem;
-        color: white;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        transition: all 0.2s ease;
+        margin-bottom: 1rem;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
     }
-    .score-card-title {
-        font-size: 0.875rem;
-        font-weight: 500;
-        opacity: 0.9;
-        margin-bottom: 0.5rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    .score-card-value {
-        font-size: 3.5rem;
-        font-weight: 800;
-        line-height: 1;
-        margin-bottom: 0.5rem;
-    }
-    .score-card-label {
-        font-size: 0.875rem;
-        opacity: 0.8;
+    .health-score-card:hover {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border-color: #cbd5e1;
     }
     
     /* Table Styling */
@@ -168,14 +167,6 @@ st.markdown("""
         font-weight: 500;
     }
     
-    /* Grid Layout */
-    .grid-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1rem;
-        margin-bottom: 2rem;
-    }
-    
     /* Alert Box */
     .alert-box {
         background-color: #fef3c7;
@@ -193,15 +184,36 @@ st.markdown("""
         color: #78350f;
         font-size: 0.875rem;
     }
+    
+    /* Health Value Badge */
+    .health-value {
+        font-weight: 600;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+    }
+    .health-good {
+        background-color: #dcfce7;
+        color: #166534;
+    }
+    .health-warning {
+        background-color: #fef3c7;
+        color: #92400e;
+    }
+    .health-critical {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+    
     </style>
 """, unsafe_allow_html=True)
 
-# ----- HEADER (cleaned, no emojis) -----
+# ----- HEADER -----
 st.markdown('<p class="main-header">Project Fortify / Dashboard</p>', unsafe_allow_html=True)
 st.markdown('<p class="main-subheader">AI-Powered Infrastructure Health Monitoring & Analytics Platform</p>', unsafe_allow_html=True)
 
 # Get VMs summary
-with st.spinner("🔄 Loading fleet data..."):
+with st.spinner("Loading fleet data..."):
     vms_summary = api_client.get_vms_summary()
 
 if vms_summary:
@@ -212,39 +224,45 @@ if vms_summary:
     online_vms = vms_summary.get("online", 0)
     offline_vms = vms_summary.get("offline", 0)
     
-    # Calculate health distribution
-    healthy_vms = sum(1 for vm in vms_list if vm.get("status") == "online" and vm.get("avg_cpu_24h", 0) < 70)
-    warning_vms = sum(1 for vm in vms_list if vm.get("status") == "online" and 70 <= vm.get("avg_cpu_24h", 0) < 85)
-    critical_vms = sum(1 for vm in vms_list if vm.get("status") == "online" and vm.get("avg_cpu_24h", 0) >= 85)
+    # Calculate health distribution using actual health_score field
+    healthy_vms = sum(1 for vm in vms_list if vm.get("health_score") and vm["health_score"] >= 80)
+    warning_vms = sum(1 for vm in vms_list if vm.get("health_score") and 60 <= vm["health_score"] < 80)
+    critical_vms = sum(1 for vm in vms_list if vm.get("health_score") and vm["health_score"] < 60)
     
-    # Calculate fleet health score (0-100)
-    online_vm_list = [vm for vm in vms_list if vm.get("avg_cpu_24h") is not None]
+    # Calculate fleet health score from actual health scores
+    online_vm_list = [vm for vm in vms_list if vm.get("health_score") is not None]
     if online_vm_list:
-        avg_cpu = sum(vm["avg_cpu_24h"] for vm in online_vm_list) / len(online_vm_list)
-        # Fleet health: inversely proportional to CPU usage
-        fleet_health = max(0, min(100, 100 - (avg_cpu * 0.8)))
+        fleet_health = sum(vm["health_score"] for vm in online_vm_list) / len(online_vm_list)
     else:
         fleet_health = 0
-        avg_cpu = 0
     
     # ============= FLEET OVERVIEW CARDS =============
     st.markdown('<div class="section-header">📊 Fleet Overview</div>', unsafe_allow_html=True)
     st.markdown('<p class="section-subheader">Real-time status across all virtual machines</p>', unsafe_allow_html=True)
     
-    # Top row: Key metrics
+    # Top row: Key metrics (4 equal cards)
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
+        online_color = "#059669" if online_vms > 0 else "#94a3b8"
+        offline_color = "#dc2626" if offline_vms > 0 else "#94a3b8"
+
         st.markdown(f"""
             <div class="metric-card">
                 <div class="metric-card-header">Total VMs</div>
                 <div class="metric-card-value">{total_vms}</div>
                 <div class="metric-card-delta delta-neutral">
-                    Across fleet
+                    <span style="color:{online_color}; font-weight:600;">
+                        ● {online_vms} Online
+                    </span>
+                    &nbsp;&nbsp;
+                    <span style="color:{offline_color}; font-weight:600;">
+                        ● {offline_vms} Offline
+                    </span>
                 </div>
             </div>
         """, unsafe_allow_html=True)
-    
+
     with col2:
         health_percentage = (healthy_vms / total_vms * 100) if total_vms > 0 else 0
         st.markdown(f"""
@@ -274,60 +292,47 @@ if vms_summary:
                 <div class="metric-card-header">Critical</div>
                 <div class="metric-card-value">{critical_vms}</div>
                 <div class="metric-card-delta delta-negative">
-                    ⚠ Immediate action
+                    ⚠ Immediate action required
                 </div>
             </div>
         """, unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Second row: Performance metrics and Fleet Health Score
-    col1, col2, col3, col4 = st.columns([1, 1, 1, 1.5])
+    # Second row: 3 metrics + Fleet Health Score with Donut Chart
+    col1, col2, col3 = st.columns(3)
     
+    # Fleet Health Score - Same style as other cards
     with col1:
+
+        # Determine health color
+        if fleet_health >= 80:
+            value_color = "#059669"   # green
+            status_text = "✓ Operating within optimal range"
+            delta_class = "delta-positive"
+        elif fleet_health >= 60:
+            value_color = "#d97706"   # orange
+            status_text = "⚠ Moderate risk detected"
+            delta_class = "delta-neutral"
+        else:
+            value_color = "#dc2626"   # red
+            status_text = "⚠ Immediate attention required"
+            delta_class = "delta-negative"
+
         st.markdown(f"""
             <div class="metric-card">
-                <div class="metric-card-header">Online VMs</div>
-                <div class="metric-card-value">{online_vms}</div>
-                <div class="metric-card-delta delta-positive">
-                    ↑ Active now
+                <div class="metric-card-header">Fleet Health Score</div>
+                <div class="metric-card-value" style="color:{value_color};">
+                    {fleet_health:.0f}
+                    <span style="font-size:1rem; color:#94a3b8;">/100</span>
+                </div>
+                <div class="metric-card-delta {delta_class}">
+                    {status_text}
                 </div>
             </div>
         """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-card-header">Offline VMs</div>
-                <div class="metric-card-value">{offline_vms}</div>
-                <div class="metric-card-delta delta-{'negative' if offline_vms > 0 else 'neutral'}">
-                    ↓ Inactive
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-card-header">Avg CPU 24h</div>
-                <div class="metric-card-value">{avg_cpu:.1f}%</div>
-                <div class="metric-card-delta delta-{'negative' if avg_cpu > 70 else 'positive'}">
-                    {'↑ High load' if avg_cpu > 70 else '✓ Normal'}
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    with col4:
-        st.markdown(f"""
-            <div class="score-card">
-                <div class="score-card-title">Fleet Health Score</div>
-                <div class="score-card-value">{fleet_health:.0f}</div>
-                <div class="score-card-label">Out of 100 • Updated just now</div>
-            </div>
-        """, unsafe_allow_html=True)
-    
+        
     # ============= AI RECOMMENDATIONS =============
-    st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown('<div class="section-header">🤖 AI Recommendations</div>', unsafe_allow_html=True)
     st.markdown('<p class="section-subheader">Intelligent insights and proactive suggestions</p>', unsafe_allow_html=True)
     
@@ -337,15 +342,15 @@ if vms_summary:
     if critical_vms > 0:
         recommendations.append({
             "priority": "high",
-            "title": "Critical CPU Load Detected",
-            "description": f"{critical_vms} VM(s) experiencing CPU usage ≥85%. Recommend immediate resource scaling or workload redistribution."
+            "title": "Critical Health Issues Detected",
+            "description": f"{critical_vms} VM(s) with health score <60. Recommend immediate investigation and resource scaling."
         })
     
     if warning_vms > 0:
         recommendations.append({
             "priority": "medium",
             "title": "Resource Optimization Opportunity",
-            "description": f"{warning_vms} VM(s) showing elevated CPU usage (70-85%). Consider proactive scaling before reaching critical threshold."
+            "description": f"{warning_vms} VM(s) showing moderate health (60-80). Consider proactive optimization before issues escalate."
         })
     
     if offline_vms > 0:
@@ -355,17 +360,17 @@ if vms_summary:
             "description": f"{offline_vms} VM(s) currently offline. Verify if this is intentional or investigate connectivity issues."
         })
     
-    if avg_cpu > 60:
-        recommendations.append({
-            "priority": "low",
-            "title": "Fleet-Wide Performance Trend",
-            "description": f"Fleet average CPU at {avg_cpu:.1f}%. Monitor for sustained high load patterns that may indicate capacity planning needs."
-        })
-    else:
+    if fleet_health >= 80:
         recommendations.append({
             "priority": "low",
             "title": "Fleet Operating Normally",
             "description": f"All systems performing within optimal parameters. Fleet health score: {fleet_health:.0f}/100."
+        })
+    else:
+        recommendations.append({
+            "priority": "low",
+            "title": "Fleet-Wide Performance Trend",
+            "description": f"Fleet health at {fleet_health:.0f}/100. Monitor for sustained patterns that may indicate capacity planning needs."
         })
     
     # Display recommendations
@@ -378,47 +383,45 @@ if vms_summary:
             </div>
         """, unsafe_allow_html=True)
     
-    # ============= VM TABLE WITH PROGRESS BARS & CLICKABLE LINKS =============
-    st.markdown("<br>", unsafe_allow_html=True)
+    # ============= VM TABLE WITH HEALTH AND ALERTS =============
     st.markdown('<div class="section-header">💻 Virtual Machines</div>', unsafe_allow_html=True)
     st.markdown('<p class="section-subheader">Click on a VM ID to view detailed health metrics</p>', unsafe_allow_html=True)
-    
-    # Prepare dataframe with numeric values (not formatted strings)
+
+    # Prepare dataframe
     df_vms = pd.DataFrame(vms_list)
-    
-    # Add status column (as string for display)
+
+    # Add status column
     def get_status(row):
         if row.get("status") == "offline":
             return "🔴 Offline"
-        cpu = row.get("avg_cpu_24h", 0)
-        if cpu >= 85:
-            return "🔴 Critical"
-        elif cpu >= 70:
+        health = row.get("health_score", 0)
+        if health >= 80:
+            return "🟢 Healthy"
+        elif health >= 60:
             return "🟡 Warning"
         else:
-            return "🟢 Healthy"
-    
+            return "🔴 Critical"
+
     df_vms["health_status"] = df_vms.apply(get_status, axis=1)
-    
-    # Create display dataframe with numeric columns
-    df_display = df_vms[["vm_id", "name", "health_status", "current_cpu", "avg_cpu_24h", "metric_count_24h"]].copy()
-    
-    # Fill NaN values for progress bars (use 0 for CPU)
+
+    # Create display dataframe with new columns
+    df_display = df_vms[["vm_id", "name", "health_status", "current_cpu", "health_score", "alert_count"]].copy()
+
+    # Fill NaN values
     df_display["current_cpu"] = df_display["current_cpu"].fillna(0)
-    df_display["avg_cpu_24h"] = df_display["avg_cpu_24h"].fillna(0)
-    
-    # ---- CORRECTED LINK HANDLING ----
-    # Replace vm_id column with the full URL
+    df_display["health_score"] = df_display["health_score"].fillna(0)
+    df_display["alert_count"] = df_display["alert_count"].fillna(0).astype(int)
+
+    # Replace vm_id column with the full URL for linking
     df_display["vm_id"] = df_display["vm_id"].apply(
         lambda x: f"/vm_health_monitor?vm={x}"
     )
-    
-    # Configure columns with LinkColumn and a regex display_text to extract the VM ID
+
+    # Configure columns
     column_config = {
         "vm_id": st.column_config.LinkColumn(
             "VM ID",
             help="Click to view detailed health metrics",
-            # Use regex capture group to display just the VM ID part (e.g., vm-001)
             display_text=r"vm=([^&]+)",
         ),
         "name": "Name",
@@ -430,30 +433,42 @@ if vms_summary:
             max_value=100,
             format="%.1f%%"
         ),
-        "avg_cpu_24h": st.column_config.ProgressColumn(
-            "Avg CPU (24h)",
-            help="Average CPU usage over last 24 hours",
-            min_value=0,
-            max_value=100,
-            format="%.1f%%"
+        "health_score": st.column_config.NumberColumn(
+            "Health",
+            help="Overall health score (0-100)",
+            format="%d"
         ),
-        "metric_count_24h": "Metrics (24h)",
+        "alert_count": st.column_config.NumberColumn(
+            "Alerts",
+            help="Number of active alerts",
+            format="%d"
+        ),
     }
-    
-    # Display the interactive dataframe
+
+    # Apply styling to health_score column
+    def style_health(val):
+        if val >= 80:
+            return 'background-color: #dcfce7; color: #166534; font-weight: 600;'
+        elif val >= 60:
+            return 'background-color: #fef3c7; color: #92400e; font-weight: 600;'
+        else:
+            return 'background-color: #fee2e2; color: #991b1b; font-weight: 600;'
+
+    styled_df = df_display.style.map(style_health, subset=['health_score'])
+
+    # Display the interactive dataframe with styling
     st.dataframe(
-        df_display,
+        styled_df,
         column_config=column_config,
         width='stretch',
         hide_index=True,
         height=400,
-        column_order=["vm_id", "name", "health_status", "current_cpu", "avg_cpu_24h", "metric_count_24h"]
+        column_order=["vm_id", "name", "health_status", "current_cpu", "health_score", "alert_count"]
     )
-    
+
     # Table footer
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    st.caption(f"📊 Displaying {len(vms_list)} virtual machines | 🔄 Last updated: {current_time}")
-    
+    st.caption(f"📊 Displaying {len(vms_list)} virtual machines | 🔄 Last updated: {current_time}")    
 else:
     # Error state
     st.markdown("""

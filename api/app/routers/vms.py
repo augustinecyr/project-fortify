@@ -2,7 +2,7 @@
 Virtual Machines endpoints - ENHANCED VERSION
 Now returns all VM fields including host, security, resources, etc.
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timedelta
