@@ -32,16 +32,20 @@ if not vms_summary:
     st.stop()
 
 vms = vms_summary.get("vms", [])
-vm_options = {f"{vm['vm_id']} - {vm['name']}": vm['vm_id'] for vm in vms}
+
+# Sort VMs by VM ID for consistent ordering
+sorted_vms = sorted(vms, key=lambda x: x['vm_id'])
+vm_display_list = [f"{vm['vm_id']} - {vm['name']}" for vm in sorted_vms]
+vm_id_by_display = {display: vm['vm_id'] for display, vm in zip(vm_display_list, sorted_vms)}
 
 # ---- VM SELECTOR ----
 selected_display = st.selectbox(
     "Select Virtual Machine",
-    list(vm_options.keys()),
+    vm_display_list,
     index=0,
     key="vm_selector"
 )
-selected_vm_id = vm_options[selected_display]
+selected_vm_id = vm_id_by_display[selected_display]
 
 # ---- TIME RANGE SELECTOR ----
 time_range = st.selectbox(
