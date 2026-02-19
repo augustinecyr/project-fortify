@@ -47,7 +47,7 @@ pages = {
         st.Page("pages/optimization.py", title="Cost Optimization", icon=":material/trending_down:"),
     ],
     "Security": [
-        st.Page("pages/security_analytics.py", title="Security Analytics", icon=":material/security:"),  # if placed in root, else "pages/security.py"
+        st.Page("pages/security_posture.py", title="Security Posture", icon=":material/security:"),
     ]
 }
 

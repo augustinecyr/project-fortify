@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fortify — Tech Stack</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@700;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --border: #e2e5ea;
+    --accent: #2563eb;
+    --accent2: #ea580c;
+    --accent3: #7c3aed;
+    --accent4: #16a34a;
+    --accent5: #d97706;
+    --text: #111827;
+    --muted: #6b7280;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 48px 24px;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 50% 35% at 10% 15%, rgba(37,99,235,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 50% at 90% 85%, rgba(124,58,237,0.04) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .wrapper { width: 100%; max-width: 960px; }
+
+  .header { margin-bottom: 44px; animation: fadeDown 0.5s ease both; }
+  .label { font-size: 10px; letter-spacing: 0.25em; color: var(--accent); text-transform: uppercase; margin-bottom: 8px; }
+  h1 { font-family: 'Syne', sans-serif; font-size: clamp(32px, 5vw, 52px); font-weight: 800; line-height: 1; letter-spacing: -1px; }
+  h1 span { color: var(--accent); }
+  .subtitle { margin-top: 10px; font-size: 11px; color: var(--muted); }
+
+  .section-title {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+    border-left: 2px solid var(--border);
+    padding-left: 10px;
+  }
+
+  .section { margin-bottom: 28px; animation: fadeUp 0.5s ease both; }
+  .section:nth-child(2) { animation-delay: 0.08s; }
+  .section:nth-child(3) { animation-delay: 0.16s; }
+  .section:nth-child(4) { animation-delay: 0.24s; }
+  .section:nth-child(5) { animation-delay: 0.32s; }
+  .section:nth-child(6) { animation-delay: 0.40s; }
+  .section:nth-child(7) { animation-delay: 0.48s; }
+
+  .cards { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .card {
+    flex: 1;
+    min-width: 180px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+    cursor: default;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--card-accent, var(--accent));
+  }
+
+  .card { box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .card:hover { border-color: var(--card-accent, var(--accent)); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.10); }
+
+  .card-icon { font-size: 20px; margin-bottom: 8px; display: block; }
+  .card-name { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+  .card-version { font-size: 10px; color: var(--card-accent, var(--accent)); margin-bottom: 8px; }
+  .card-desc { font-size: 11px; line-height: 1.65; color: var(--muted); }
+  .card-tag {
+    display: inline-block; margin-top: 9px;
+    padding: 2px 8px; border-radius: 3px;
+    font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+    background: rgba(0,0,0,0.04); color: var(--muted);
+  }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .chip {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    transition: border-color 0.2s;
+    cursor: default;
+  }
+
+  .chip { box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .chip:hover { border-color: var(--chip-accent, var(--border)); box-shadow: 0 2px 8px rgba(0,0,0,0.09); }
+
+  .chip-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--chip-accent, var(--muted));
+    flex-shrink: 0;
+  }
+
+  .chip-name { font-size: 12px; color: var(--text); font-weight: 600; }
+  .chip-sub { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .chip-inner { display: flex; flex-direction: column; }
+
+  .divider { height: 1px; background: var(--border); margin: 32px 0; animation: fadeUp 0.5s ease 0.5s both; }
+
+  .footer-row { display: flex; gap: 12px; flex-wrap: wrap; animation: fadeUp 0.5s ease 0.55s both; }
+
+  .pill {
+    padding: 7px 14px; border: 1px solid var(--border); border-radius: 100px;
+    font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 8px;
+  }
+
+  .pill-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeUp   { from { opacity: 0; transform: translateY(14px);  } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <div class="header">
+    <div class="label">Full Stack Overview · Project Fortify</div>
+    <h1>FORTIFY <span>STACK</span></h1>
+    <div class="subtitle">// ICT3902C Capstone · confirmed venv snapshot · all active dependencies</div>
+  </div>
+
+  <!-- 1. FRONTEND -->
+  <div class="section">
+    <div class="section-title">Frontend · Dashboard UI</div>
+    <div class="cards">
+      <div class="card" style="--card-accent:#ff4b4b;">
+        <span class="card-icon">🎈</span>
+        <div class="card-name">Streamlit</div>
+        <div class="card-version">v1.53.1</div>
+        <div class="card-desc">Python-native web UI framework. Powers the dashboard — charts, controls, and data views — without writing any HTML/CSS/JS.</div>
+        <span class="card-tag">Port 8501 (default)</span>
+      </div>
+      <div class="card" style="--card-accent:#636efa;">
+        <span class="card-icon">📊</span>
+        <div class="card-name">Plotly</div>
+        <div class="card-version">v6.5.2</div>
+        <div class="card-desc">Interactive charting library. Renders graphs, time-series, and visual analytics directly inside the Streamlit dashboard.</div>
+        <span class="card-tag">Visualisation</span>
+      </div>
+      <div class="card" style="--card-accent:#f59e0b;">
+        <span class="card-icon">🐼</span>
+        <div class="card-name">Pandas</div>
+        <div class="card-version">v2.3.3</div>
+        <div class="card-desc">DataFrame engine. Cleans, transforms, and shapes data before it reaches Plotly or Streamlit tables. NumPy sits underneath for array ops.</div>
+        <span class="card-tag">Data Wrangling</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. API -->
+  <div class="section">
+    <div class="section-title">API Layer · Backend</div>
+    <div class="cards">
+      <div class="card" style="--card-accent:#00e5ff;">
+        <span class="card-icon">⚡</span>
+        <div class="card-name">FastAPI</div>
+        <div class="card-version">v0.128.0</div>
+        <div class="card-desc">High-performance async API framework. Handles HTTP routing, request validation via Pydantic, and auto-generates OpenAPI/Swagger docs.</div>
+        <span class="card-tag">Port 8000</span>
+      </div>
+      <div class="card" style="--card-accent:#4caf50;">
+        <span class="card-icon">🦄</span>
+        <div class="card-name">Uvicorn</div>
+        <div class="card-version">v0.40.0</div>
+        <div class="card-desc">ASGI server that runs the FastAPI app. Hot-reload in dev mode, handles async concurrency efficiently in production.</div>
+        <span class="card-tag">ASGI Server</span>
+      </div>
+      <div class="card" style="--card-accent:#e91e63;">
+        <span class="card-icon">🔷</span>
+        <div class="card-name">Pydantic</div>
+        <div class="card-version">v2.12.5</div>
+        <div class="card-desc">Data validation and settings management. Every API request/response schema is defined and enforced with Pydantic models at runtime.</div>
+        <span class="card-tag">Validation</span>
+      </div>
+      <div class="card" style="--card-accent:#ab47bc;">
+        <span class="card-icon">🌐</span>
+        <div class="card-name">HTTPX + Requests</div>
+        <div class="card-version">0.25.2 / 2.32.5</div>
+        <div class="card-desc">HTTP clients. HTTPX for async outbound API calls from the backend; Requests used in the Streamlit frontend to call FastAPI endpoints.</div>
+        <span class="card-tag">HTTP Clients</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. DATABASE + ORM + MIGRATIONS -->
+  <div class="section">
+    <div class="section-title">Database · ORM · Migrations</div>
+    <div class="cards">
+      <div class="card" style="--card-accent:#336791;">
+        <span class="card-icon">🐘</span>
+        <div class="card-name">PostgreSQL</div>
+        <div class="card-version">v15 Alpine · Docker</div>
+        <div class="card-desc">Primary relational database. All persistent application data lives here. Health-checked — the API won't start until Postgres is ready.</div>
+        <span class="card-tag">Port 5432</span>
+      </div>
+      <div class="card" style="--card-accent:#ff6b35;">
+        <span class="card-icon">🗂️</span>
+        <div class="card-name">SQLAlchemy</div>
+        <div class="card-version">v2.0.46</div>
+        <div class="card-desc">ORM layer. Database tables are defined as Python classes; SQLAlchemy handles query generation. No raw SQL needed in application code.</div>
+        <span class="card-tag">ORM</span>
+      </div>
+      <div class="card" style="--card-accent:#22c55e;">
+        <span class="card-icon">🔄</span>
+        <div class="card-name">Alembic</div>
+        <div class="card-version">v1.18.1</div>
+        <div class="card-desc">Database migration tool built on top of SQLAlchemy. Schema changes are versioned as migration scripts — safe upgrades and rollbacks without data loss.</div>
+        <span class="card-tag">Migrations</span>
+      </div>
+      <div class="card" style="--card-accent:#00bcd4;">
+        <span class="card-icon">🔌</span>
+        <div class="card-name">Psycopg</div>
+        <div class="card-version">v3.3.2</div>
+        <div class="card-desc">PostgreSQL driver. The low-level adapter SQLAlchemy uses to open connections and execute queries against the Postgres container.</div>
+        <span class="card-tag">DB Driver</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. CACHE -->
+  <div class="section">
+    <div class="section-title">Caching · In-Memory Store</div>
+    <div class="cards">
+      <div class="card" style="--card-accent:#dc382d;">
+        <span class="card-icon">⚙️</span>
+        <div class="card-name">Redis</div>
+        <div class="card-version">v7 Alpine · Docker</div>
+        <div class="card-desc">In-memory key-value store. Used for caching API responses, managing sessions, and/or brokering background tasks. Data persisted via Docker volume.</div>
+        <span class="card-tag">Port 6379</span>
+      </div>
+      <div class="card" style="--card-accent:#dc382d;">
+        <span class="card-icon">🐍</span>
+        <div class="card-name">redis-py</div>
+        <div class="card-version">v5.0.1</div>
+        <div class="card-desc">Official Python client for Redis. FastAPI uses this to read/write cache keys, set TTLs, and interact with the Redis container programmatically.</div>
+        <span class="card-tag">Redis Client</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. TESTING + QA -->
+  <div class="section">
+    <div class="section-title">Testing · Code Quality</div>
+    <div class="chips">
+      <div class="chip" style="--chip-accent:#22c55e;">
+        <span class="chip-dot"></span>
+        <div class="chip-inner">
+          <span class="chip-name">Pytest</span>
+          <span class="chip-sub">v7.4.3 · test runner</span>
+        </div>
+      </div>
+      <div class="chip" style="--chip-accent:#22c55e;">
+        <span class="chip-dot"></span>
+        <div class="chip-inner">
+          <span class="chip-name">pytest-asyncio</span>
+          <span class="chip-sub">v0.21.1 · async test support</span>
+        </div>
+      </div>
+      <div class="chip" style="--chip-accent:#22c55e;">
+        <span class="chip-dot"></span>
+        <div class="chip-inner">
+          <span class="chip-name">pytest-cov</span>
+          <span class="chip-sub">v4.1.0 · coverage reports</span>
+        </div>
+      </div>
+      <div class="chip" style="--chip-accent:#f59e0b;">
+        <span class="chip-dot"></span>
+        <div class="chip-inner">
+          <span class="chip-name">Black</span>
+          <span class="chip-sub">v23.12.0 · code formatter</span>
+        </div>
+      </div>
+      <div class="chip" style="--chip-accent:#f59e0b;">
+        <span class="chip-dot"></span>
+        <div class="chip-inner">
+          <span class="chip-name">Flake8</span>
+          <span class="chip-sub">v6.1.0 · linting</span>
+        </div>
+      </div>
+      <div class="chip" style="--chip-accent:#f59e0b;">
+        <span class="chip-dot"></span>
+        <div class="chip-inner">
+          <span class="chip-name">isort</span>
+          <span class="chip-sub">v5.13.2 · import sorting</span>
+        </div>
+      </div>
+      <div class="chip" style="--chip-accent:#f59e0b;">
+        <span class="chip-dot"></span>
+        <div class="chip-inner">
+          <span class="chip-name">mypy</span>
+          <span class="chip-sub">v1.7.1 · static type checking</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. INFRA + CONFIG -->
+  <div class="section">
+    <div class="section-title">Infrastructure · Configuration</div>
+    <div class="chips">
+      <div class="chip" style="--chip-accent:#2496ed;">
+        <span class="chip-dot"></span>
+        <div class="chip-inner">
+          <span class="chip-name">Docker + Compose v3.8</span>
+          <span class="chip-sub">container orchestration · bridge network · persistent volumes</span>
+        </div>
+      </div>
+      <div class="chip" style="--chip-accent:#7c3aed;">
+        <span class="chip-dot"></span>
+        <div class="chip-inner">
+          <span class="chip-name">python-dotenv</span>
+          <span class="chip-sub">v1.0.0 · .env secret injection</span>
+        </div>
+      </div>
+      <div class="chip" style="--chip-accent:#7c3aed;">
+        <span class="chip-dot"></span>
+        <div class="chip-inner">
+          <span class="chip-name">pydantic-settings</span>
+          <span class="chip-sub">v2.12.0 · typed config management</span>
+        </div>
+      </div>
+      <div class="chip" style="--chip-accent:#22c55e;">
+        <span class="chip-dot"></span>
+        <div class="chip-inner">
+          <span class="chip-name">GitPython</span>
+          <span class="chip-sub">v3.1.46 · git repo interaction</span>
+        </div>
+      </div>
+      <div class="chip" style="--chip-accent:#ff6b35;">
+        <span class="chip-dot"></span>
+        <div class="chip-inner">
+          <span class="chip-name">python-multipart</span>
+          <span class="chip-sub">v0.0.6 · file upload handling</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="footer-row">
+    <div class="pill"><span class="pill-dot" style="background:var(--accent)"></span>3 Docker services</div>
+    <div class="pill"><span class="pill-dot" style="background:var(--accent4)"></span>ORM + versioned migrations</div>
+    <div class="pill"><span class="pill-dot" style="background:var(--accent5)"></span>Test · lint · type-safe</div>
+    <div class="pill"><span class="pill-dot" style="background:#ff4b4b"></span>Streamlit dashboard</div>
+    <div class="pill"><span class="pill-dot" style="background:var(--accent3)"></span>Env-based secrets</div>
+  </div>
+
+</div>
+</body>
+</html>
