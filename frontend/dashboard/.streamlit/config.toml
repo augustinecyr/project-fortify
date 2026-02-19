@@ -1,0 +1,11 @@
+[ui]
+hideTopBar = false
+
+[client]
+toolbarMode = "minimal"
+
+[server]
+enableXsrfProtection = false
+
+[theme]
+primaryColor = "#1f77b4"

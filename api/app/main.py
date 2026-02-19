@@ -3,8 +3,7 @@ FastAPI main application entry point for Project Fortify.
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import health
-from app.routers import metrics          # Add this line
+from app.routers import health, metrics, vms
 
 app = FastAPI(
     title="Project Fortify API",
@@ -23,8 +22,8 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router, tags=["health"])
-app.include_router(metrics.router)       # Add this line
-
+app.include_router(metrics.router)
+app.include_router(vms.router)
 
 @app.get("/")
 async def root():

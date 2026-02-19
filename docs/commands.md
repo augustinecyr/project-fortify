@@ -70,6 +70,7 @@ cd ..
 
 # Run seed script (generates data from today going back 7 days)
 python data/seeds/seed_database.py
+python data/generators/metrics_simulator.py
 
 # This will:
 # - Clear existing data
