@@ -12,6 +12,11 @@ from app.db.database import get_db
 from app.db.models import VirtualMachine, CPUMetric, HealthScore
 from app.models.schemas import VMUpdate
 from datetime import datetime
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "analytics"))
+from scoring import calculate_health_score
 
 router = APIRouter(prefix="/api/v1", tags=["vms"])
 
@@ -69,6 +74,22 @@ async def get_vms_summary(db: Session = Depends(get_db)):
             .scalar()
         )
         
+                # Fetch last 24h CPU metrics
+        metrics = (
+            db.query(CPUMetric)
+            .filter(CPUMetric.vm_id == vm.vm_id)
+            .filter(CPUMetric.timestamp >= start_time)
+            .filter(CPUMetric.timestamp <= end_time)
+            .order_by(CPUMetric.timestamp.asc())
+            .all()
+        )
+
+        cpu_values = [m.cpu_percent for m in metrics]
+
+        # Compute health dynamically
+        health_result = calculate_health_score(cpu_values)
+        computed_health = health_result["health_score"]
+        
         # Get latest CPU reading
         latest_metric = (
             db.query(CPUMetric)
@@ -99,7 +120,7 @@ async def get_vms_summary(db: Session = Depends(get_db)):
             "last_boot_time": vm.last_boot_time.isoformat() if vm.last_boot_time else None,
             
             # Health & Security Scores
-            "health_score": vm.health_score,
+            "health_score": computed_health,
             "security_score": vm.security_score,
             
             # Current Resource Utilization

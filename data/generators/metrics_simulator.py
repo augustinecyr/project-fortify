@@ -2,6 +2,7 @@
 Continuous metrics simulator for Project Fortify.
 Sends comprehensive metrics to the API every few seconds for all VMs.
 Enhanced to simulate CPU, memory, disk, network, and other parameters.
+IMPROVED: Now fetches and updates the API's computed health score.
 """
 import time
 import random
@@ -10,7 +11,8 @@ from datetime import datetime, UTC
 from typing import Dict, Any
 
 API_URL = "http://localhost:8000/api/v1/metrics"  # CPU metrics endpoint
-VM_UPDATE_URL = "http://localhost:8000/api/v1/vms"  # VM update endpoint (if available)
+VM_UPDATE_URL = "http://localhost:8000/api/v1/vms"  # VM update endpoint
+HEALTH_SCORE_URL = "http://localhost:8000/api/v1/health"
 
 # List of all VM IDs from your seed
 VM_IDS = [f"vm-{i:03d}" for i in range(1, 21)]
@@ -38,17 +40,6 @@ def get_vm_profile(vm_id: str) -> Dict[str, Any]:
     return VM_PROFILES["default"]
 
 
-def calculate_health_score(cpu: float, memory: float, disk: float) -> int:
-    """
-    Calculate health score (0-100) based on resource utilization.
-    Lower resource usage = higher health score.
-    """
-    # Weighted formula: CPU 40%, Memory 30%, Disk 30%
-    resource_pressure = (cpu * 0.4 + memory * 0.3 + disk * 0.3)
-    health = 100 - resource_pressure
-    return max(0, min(100, int(health)))
-
-
 def simulate_anomaly(vm_id: str, cpu: float, memory: float) -> tuple[bool, int]:
     """
     Detect if current metrics represent an anomaly.
@@ -74,9 +65,26 @@ def simulate_anomaly(vm_id: str, cpu: float, memory: float) -> tuple[bool, int]:
     return is_anomaly, alert_count
 
 
+def get_computed_health_score(vm_id: str) -> int:
+    """
+    Fetch the computed health score from the API's health endpoint.
+    """
+    try:
+        response = requests.get(f"{HEALTH_SCORE_URL}/{vm_id}", timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            return int(data.get("health_score", 0))
+        else:
+            print(f"  ⚠️  Health score fetch failed for {vm_id}: HTTP {response.status_code}")
+    except Exception as e:
+        print(f"  ⚠️  Health score fetch error for {vm_id}: {e}")
+
+    return 0
+
 def generate_comprehensive_metrics(vm_id: str) -> Dict[str, Any]:
     """
-    Generate comprehensive metrics for a VM including CPU, memory, disk, network, health.
+    Generate comprehensive metrics for a VM including CPU, memory, disk, network.
+    Health score will be fetched from API after metrics are sent.
     """
     profile = get_vm_profile(vm_id)
     
@@ -106,7 +114,6 @@ def generate_comprehensive_metrics(vm_id: str) -> Dict[str, Any]:
         memory = min(100.0, memory + random.uniform(5, 15))
     
     # Generate Disk (grows slowly over time, not time-of-day dependent)
-    # Base disk usage with slow random walk
     disk = 40 + random.uniform(-5, 5)  # Around 40% with small variation
     disk = max(10.0, min(95.0, disk))
     
@@ -118,10 +125,7 @@ def generate_comprehensive_metrics(vm_id: str) -> Dict[str, Any]:
         network_in = random.uniform(0.5, 4.0)
         network_out = random.uniform(0.3, 3.0)
     
-    # Calculate health score
-    health_score = calculate_health_score(cpu, memory, disk)
-    
-    # Detect anomalies and alerts
+    # Detect anomalies and alerts (for immediate feedback)
     anomaly_detected, alert_count = simulate_anomaly(vm_id, cpu, memory)
     
     return {
@@ -132,7 +136,6 @@ def generate_comprehensive_metrics(vm_id: str) -> Dict[str, Any]:
         "disk_percent": round(disk, 2),
         "network_in_mbps": round(network_in, 2),
         "network_out_mbps": round(network_out, 2),
-        "health_score": health_score,
         "alert_count": alert_count,
         "anomaly_detected": anomaly_detected
     }
@@ -148,7 +151,7 @@ def send_cpu_metric(vm_id: str, cpu_percent: float, timestamp: str):
     }
     
     try:
-        response = requests.post(API_URL, json=payload)
+        response = requests.post(API_URL, json=payload, timeout=3)
         if response.status_code == 200:
             return True
         else:
@@ -159,12 +162,11 @@ def send_cpu_metric(vm_id: str, cpu_percent: float, timestamp: str):
         return False
 
 
-def update_vm_state(vm_id: str, metrics: Dict[str, Any]):
+def update_vm_state(vm_id: str, metrics: Dict[str, Any], computed_health: int):
     """
-    Update VM state with comprehensive metrics (if endpoint exists).
+    Update VM state with comprehensive metrics including computed health score.
     Falls back gracefully if endpoint not available.
     """
-    # Try to update VM with PATCH endpoint
     try:
         update_payload = {
             "current_cpu": metrics["cpu_percent"],
@@ -172,7 +174,7 @@ def update_vm_state(vm_id: str, metrics: Dict[str, Any]):
             "current_disk": metrics["disk_percent"],
             "network_in_mbps": metrics["network_in_mbps"],
             "network_out_mbps": metrics["network_out_mbps"],
-            "health_score": metrics["health_score"],
+            "health_score": computed_health,  # Use API's computed score
             "alert_count": metrics["alert_count"],
             "anomaly_detected": metrics["anomaly_detected"]
         }
@@ -192,35 +194,55 @@ def send_metrics(vm_id: str):
     """Generate and send comprehensive metrics for a VM."""
     metrics = generate_comprehensive_metrics(vm_id)
     
-    # Always send CPU metric (backward compatible)
+    # Step 1: Send CPU metric (creates historical data for health computation)
     cpu_sent = send_cpu_metric(vm_id, metrics["cpu_percent"], metrics["timestamp"])
     
-    # Try to update full VM state (optional, fails gracefully)
-    vm_updated = update_vm_state(vm_id, metrics)
+    if not cpu_sent:
+        return  # Skip if CPU metric failed
+    
+    # Step 2: Fetch computed health score from API
+    # Note: API computes health score on-demand, so we fetch it immediately
+    computed_health = get_computed_health_score(vm_id)
+    
+    # Step 3: Update VM state with computed health score
+    vm_updated = update_vm_state(vm_id, metrics, computed_health)
     
     # Print status
-    if cpu_sent:
-        timestamp = datetime.now().strftime('%H:%M:%S')
-        status_icon = "🔴" if metrics["anomaly_detected"] else "🟢"
-        health_icon = "❤️" if metrics["health_score"] >= 80 else "⚠️" if metrics["health_score"] >= 60 else "🔴"
-        
-        print(f"[{timestamp}] {status_icon} {vm_id}: "
-              f"CPU {metrics['cpu_percent']:.1f}% | "
-              f"MEM {metrics['memory_percent']:.1f}% | "
-              f"Health {health_icon} {metrics['health_score']}")
-        
-        if metrics["alert_count"] > 0:
-            print(f"           ⚠️  {metrics['alert_count']} alert(s) detected")
+    timestamp = datetime.now().strftime('%H:%M:%S')
+    status_icon = "🔴" if metrics["anomaly_detected"] else "🟢"
+    
+    # Health icon based on computed score
+    if computed_health >= 80:
+        health_icon = "💚"
+        health_label = "Healthy"
+    elif computed_health >= 60:
+        health_icon = "🟡"
+        health_label = "Warning"
+    elif computed_health > 0:
+        health_icon = "🔴"
+        health_label = "Critical"
+    else:
+        health_icon = "⚪"
+        health_label = "N/A"
+    
+    print(f"[{timestamp}] {status_icon} {vm_id}: "
+          f"CPU {metrics['cpu_percent']:.1f}% | "
+          f"MEM {metrics['memory_percent']:.1f}% | "
+          f"Health {health_icon} {computed_health} ({health_label})")
+    
+    if metrics["alert_count"] > 0:
+        print(f"           ⚠️  {metrics['alert_count']} alert(s) detected")
 
 
 def print_banner():
     """Print startup banner."""
     print("=" * 70)
-    print("  PROJECT FORTIFY - ENHANCED METRICS SIMULATOR")
+    print("  PROJECT FORTIFY - ENHANCED METRICS SIMULATOR v2.0")
     print("=" * 70)
-    print(f"  Simulating {len(VM_IDS)} VMs with comprehensive metrics")
+    print(f"  Simulating {len(VM_IDS)} VMs with API-computed health scores")
     print(f"  CPU endpoint:    {API_URL}")
-    print(f"  VM update:       {VM_UPDATE_URL} (optional)")
+    print(f"  VM update:       {VM_UPDATE_URL}")
+    print(f"  Health compute:  {HEALTH_SCORE_URL}/{{vm_id}}/health")
     print(f"  Started at:      {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 70)
     print("\n  Press Ctrl+C to stop.\n")
@@ -238,9 +260,38 @@ def print_summary_stats(metrics_count: int, start_time: datetime):
     print(f"{'─' * 70}\n")
 
 
+def test_api_connectivity():
+    """Test API connectivity on startup."""
+    print("\n  Testing API connectivity...")
+    
+    # Test CPU metrics endpoint
+    try:
+        response = requests.get(f"{API_URL.replace('/metrics', '')}/health", timeout=2)
+        print(f"  ✓ API health check: OK")
+    except:
+        print(f"  ⚠️  Cannot reach API at {API_URL}")
+    
+    # Test health score endpoint with first VM
+    try:
+        test_vm = VM_IDS[0]
+        response = requests.get(f"{HEALTH_SCORE_URL}/{test_vm}/health", timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            print(f"  ✓ Health score endpoint: OK (test: {test_vm} = {data.get('health_score', 'N/A')})")
+        else:
+            print(f"  ⚠️  Health score endpoint returned: HTTP {response.status_code}")
+    except requests.exceptions.Timeout:
+        print(f"  ⚠️  Health score endpoint timeout (>5s)")
+    except Exception as e:
+        print(f"  ⚠️  Health score endpoint error: {e}")
+    
+    print()
+
+
 def main():
     """Main simulator loop."""
     print_banner()
+    test_api_connectivity()
     
     metrics_count = 0
     start_time = datetime.now()
