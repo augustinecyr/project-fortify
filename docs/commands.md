@@ -36,28 +36,28 @@ deactivate
 
 ```powershell
 # Start all Docker services
-docker-compose -f infrastructure/docker-compose.yml up -d
+docker-compose up -d
 
 # Start specific services only
-docker-compose -f infrastructure/docker-compose.yml up -d postgres redis
+docker-compose up -d postgres redis
 
 # Stop all services
-docker-compose -f infrastructure/docker-compose.yml down
+docker-compose down
 
 # View running containers
 docker ps
 
 # View logs
-docker-compose -f infrastructure/docker-compose.yml logs -f
+docker-compose logs -f
 
 # Stop specific container
 docker stop fortify-api
 
 # Rebuild and restart containers
-docker-compose -f infrastructure/docker-compose.yml up -d --build
+docker-compose up -d --build
 
 # Remove volumes (WARNING: deletes data)
-docker-compose -f infrastructure/docker-compose.yml down -v
+docker-compose down -v
 ```
 
 ### Re-seed Database with Fresh Data
@@ -68,15 +68,27 @@ cd api
 .\venv\Scripts\Activate.ps1
 cd ..
 
-# Run seed script (generates data from today going back 7 days)
+# Run seed script (generates 20 VMs with 30+ fields + 7 days of CPU metrics)
 python data/seeds/seed_database.py
-python data/generators/metrics_simulator.py
 
 # This will:
 # - Clear existing data
-# - Create 20 VMs
-# - Generate ~201,600 CPU metrics
+# - Create 20 VMs with health, security, resource, and alert fields
+# - Generate ~201,600 CPU metrics (7 days history)
 # Takes ~30-60 seconds
+
+# Run metrics simulator in a SEPARATE terminal (keeps VM fields updated in real time)
+# Terminal 2:
+cd api
+.\venv\Scripts\Activate.ps1
+cd ..
+python data/generators/metrics_simulator.py
+
+# Simulator will:
+# - Update CPU, memory, disk, network every few seconds
+# - Recalculate health scores, anomaly flags, and alerts continuously
+# - Apply VM-specific profiles (web servers, databases, workers)
+# - Run indefinitely until stopped (Ctrl+C)
 ```
 
 ### Database Commands
@@ -131,7 +143,7 @@ uvicorn app.main:app --reload
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 # Run API in Docker (after building)
-docker-compose -f infrastructure/docker-compose.yml up -d api
+docker-compose up -d api
 ```
 
 ### Testing Endpoints
@@ -411,20 +423,26 @@ docker restart fortify-postgres
 
 ```powershell
 # 1. Start Docker services
-docker-compose -f infrastructure/docker-compose.yml up -d postgres redis
+docker-compose up -d postgres redis
 
 # 2. Terminal 1 - Start API
 cd api
 .\venv\Scripts\Activate.ps1
 uvicorn app.main:app --reload
 
-# 3. Terminal 2 - Start Dashboard
+# 3. Terminal 2 - Start Metrics Simulator (keep running alongside API)
+cd api
+.\venv\Scripts\Activate.ps1
+cd ..
+python data/generators/metrics_simulator.py
+
+# 4. Terminal 3 - Start Dashboard
 cd frontend/dashboard
 .\venv\Scripts\Activate.ps1
 streamlit run app.py
 
-# 4. Access the applications
-# API: http://localhost:8000/docs
+# 5. Access the applications
+# API:       http://localhost:8000/docs
 # Dashboard: http://localhost:8501
 ```
 
@@ -432,7 +450,7 @@ streamlit run app.py
 
 ```powershell
 # 1. Start Docker services
-docker-compose -f infrastructure/docker-compose.yml up -d postgres redis
+docker-compose up -d postgres redis
 
 # 2. Activate virtual environment
 cd api
@@ -478,14 +496,14 @@ notepad $PROFILE
 
 # Add these functions:
 function Start-Fortify {
-    docker-compose -f infrastructure/docker-compose.yml up -d postgres redis
+    docker-compose up -d postgres redis
     cd api
     .\venv\Scripts\Activate.ps1
     uvicorn app.main:app --reload
 }
 
 function Stop-Fortify {
-    docker-compose -f infrastructure/docker-compose.yml down
+    docker-compose down
 }
 
 function Test-Api {
@@ -513,7 +531,7 @@ REDIS_URL=redis://localhost:6379/0
 API_KEY=dev-api-key-12345
 LOG_LEVEL=INFO
 
-# Analytics
-ANOMALY_THRESHOLD=0.7
-SCORE_UPDATE_INTERVAL=300
+# Analytics (added Sprint 4)
+ANOMALY_THRESHOLD=0.7          # Z-score threshold for CPU anomaly detection
+SCORE_UPDATE_INTERVAL=300      # How often (seconds) health scores are recalculated by simulator
 ```
