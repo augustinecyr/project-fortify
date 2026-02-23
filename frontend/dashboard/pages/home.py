@@ -2,12 +2,13 @@
 Project Fortify - Home Dashboard
 Modern card-based system overview with VM fleet monitoring.
 Enhanced with donut chart and improved table columns.
+Now uses last_seen for connectivity and health_score for health badge.
 """
 import streamlit as st
 import sys
 from pathlib import Path
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import plotly.graph_objects as go
 
 # Add utils to path (needed for API client)
@@ -219,10 +220,26 @@ with st.spinner("Loading fleet data..."):
 if vms_summary:
     vms_list = vms_summary.get("vms", [])
     
-    # Calculate fleet metrics
-    total_vms = vms_summary.get("total", 0)
-    online_vms = vms_summary.get("online", 0)
-    offline_vms = vms_summary.get("offline", 0)
+    # Calculate fleet metrics using actual VM list data
+    total_vms = len(vms_list)
+
+    def is_vm_online(last_seen_str):
+        """Return True if VM has sent metrics within the last 5 minutes."""
+        if not last_seen_str:
+            return False
+        try:
+            if last_seen_str.endswith('Z'):
+                last_seen_str = last_seen_str.replace('Z', '+00:00')
+            last_seen = datetime.fromisoformat(last_seen_str)
+            if last_seen.tzinfo is None:
+                last_seen = last_seen.replace(tzinfo=timezone.utc)
+            now = datetime.now(timezone.utc)
+            return (now - last_seen) <= timedelta(minutes=5)
+        except Exception:
+            return False
+
+    online_vms = sum(1 for vm in vms_list if is_vm_online(vm.get("last_seen")))
+    offline_vms = total_vms - online_vms
     
     # Calculate health distribution using actual health_score field
     healthy_vms = sum(1 for vm in vms_list if vm.get("health_score") and vm["health_score"] >= 80)
@@ -383,18 +400,43 @@ if vms_summary:
             </div>
         """, unsafe_allow_html=True)
     
-    # ============= VM TABLE WITH HEALTH AND ALERTS =============
+    # ============= VM TABLE WITH HEALTH AND CONNECTIVITY =============
     st.markdown('<div class="section-header">💻 Virtual Machines</div>', unsafe_allow_html=True)
     st.markdown('<p class="section-subheader">Click on a VM ID to view detailed health metrics</p>', unsafe_allow_html=True)
 
     # Prepare dataframe
     df_vms = pd.DataFrame(vms_list)
 
-    # Add status column
-    def get_status(row):
-        if row.get("status") == "offline":
+    # Define connectivity threshold (5 minutes)
+    offline_threshold = timedelta(minutes=5)
+    now = datetime.now(timezone.utc)
+
+    def get_connectivity(last_seen_str):
+        """Return connectivity badge based on last_seen timestamp."""
+        if not last_seen_str:
             return "🔴 Offline"
-        health = row.get("health_score", 0)
+        try:
+            # Parse ISO string, convert 'Z' to UTC offset
+            if last_seen_str.endswith('Z'):
+                last_seen_str = last_seen_str.replace('Z', '+00:00')
+            last_seen = datetime.fromisoformat(last_seen_str)
+            
+            # Ensure last_seen is timezone-aware (assume UTC if naive)
+            if last_seen.tzinfo is None:
+                last_seen = last_seen.replace(tzinfo=timezone.utc)
+            
+            now = datetime.now(timezone.utc)
+            if now - last_seen > timedelta(minutes=5):
+                return "🔴 Offline"
+            else:
+                return "🟢 Online"
+        except Exception as e:
+            # Optionally log the error for debugging
+            # st.write(f"Debug: {e}")  # uncomment to see errors
+            return "🔴 Offline"
+
+    def get_health_badge(health):
+        """Return health badge based on health score."""
         if health >= 80:
             return "🟢 Healthy"
         elif health >= 60:
@@ -402,10 +444,12 @@ if vms_summary:
         else:
             return "🔴 Critical"
 
-    df_vms["health_status"] = df_vms.apply(get_status, axis=1)
+    # Apply the functions
+    df_vms["connectivity"] = df_vms["last_seen"].apply(get_connectivity)
+    df_vms["health_badge"] = df_vms["health_score"].apply(get_health_badge)
 
-    # Create display dataframe with new columns
-    df_display = df_vms[["vm_id", "name", "health_status", "current_cpu", "health_score", "alert_count"]].copy()
+    # Create display dataframe with the new columns
+    df_display = df_vms[["vm_id", "name", "connectivity", "health_badge", "current_cpu", "health_score", "alert_count"]].copy()
 
     # Fill NaN values
     df_display["current_cpu"] = df_display["current_cpu"].fillna(0)
@@ -425,7 +469,8 @@ if vms_summary:
             display_text=r"vm=([^&]+)",
         ),
         "name": "Name",
-        "health_status": "Status",
+        "connectivity": "Connectivity",
+        "health_badge": "Health",
         "current_cpu": st.column_config.ProgressColumn(
             "Current CPU",
             help="Current CPU usage percentage",
@@ -434,7 +479,7 @@ if vms_summary:
             format="%.1f%%"
         ),
         "health_score": st.column_config.NumberColumn(
-            "Health",
+            "Score",
             help="Overall health score (0-100)",
             format="%d"
         ),
@@ -456,19 +501,19 @@ if vms_summary:
 
     styled_df = df_display.style.map(style_health, subset=['health_score'])
 
-    # Display the interactive dataframe with styling
+    # Display the interactive dataframe
     st.dataframe(
         styled_df,
         column_config=column_config,
         width='stretch',
         hide_index=True,
         height=400,
-        column_order=["vm_id", "name", "health_status", "current_cpu", "health_score", "alert_count"]
+        column_order=["vm_id", "name", "connectivity", "health_badge", "current_cpu", "health_score", "alert_count"]
     )
 
     # Table footer
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    st.caption(f"📊 Displaying {len(vms_list)} virtual machines | 🔄 Last updated: {current_time}")    
+    st.caption(f"📊 Displaying {len(vms_list)} virtual machines | 🔄 Last updated: {current_time}")
 else:
     # Error state
     st.markdown("""
@@ -480,4 +525,4 @@ else:
 
 # Footer
 st.divider()
-st.caption("⚡ Project Fortify - AI-Assisted Infrastructure Monitoring | Version 0.2.0 | Built with Streamlit")
+st.caption("⚡ Project Fortify - AI-Assisted Infrastructure Monitoring | Version 0.2.1 | Built with Streamlit")

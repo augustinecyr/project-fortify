@@ -2,14 +2,14 @@
 VM Health Monitor - Enhanced with comprehensive VM information
 Displays health scoring, resource utilization, security metrics, and performance analytics.
 Supports ?vm=vm-XXX URL parameter for deep linking.
-Navigation logic preserved.
+Now uses last_seen for connectivity badge.
 """
 
 import streamlit as st
 import pandas as pd
 import sys
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 # ---- FIX PATHS ----
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "utils"))
@@ -107,7 +107,7 @@ sorted_vms = sorted(vms, key=lambda x: x['vm_id'])
 vm_display_list = [f"{vm['vm_id']} - {vm['name']}" for vm in sorted_vms]
 vm_id_by_display = {display: vm['vm_id'] for display, vm in zip(vm_display_list, sorted_vms)}
 
-# ---- READ QUERY PARAMETER (UNCHANGED LOGIC) ----
+# ---- READ QUERY PARAMETER ----
 query_params = st.query_params
 preselected_vm = query_params.get("vm", None)
 default_index = 0
@@ -148,7 +148,6 @@ with st.expander("🔍 Preview Data", expanded=False):
 
 # ---- EXTRACT DATA ----
 vm_name = vm_details.get("name", "Unknown")
-vm_status = vm_details.get("status", "unknown")
 host = vm_details.get("host", "N/A")
 os_version = vm_details.get("os_version", "N/A")
 
@@ -164,14 +163,32 @@ comp_scores = {
 
 _, health_status, _ = get_health_status_class(health_score)
 
-# ---- HORIZONTAL HEADER ----
-status_class = "status-online" if vm_status == "online" else "status-offline"
+# ---- COMPUTE CONNECTIVITY FROM LAST_SEEN ----
+offline_threshold = timedelta(minutes=5)
+now = datetime.now(timezone.utc)
+last_seen_str = vm_details.get("last_seen")
+is_online = False
+if last_seen_str:
+    try:
+        if last_seen_str.endswith('Z'):
+            last_seen_str = last_seen_str.replace('Z', '+00:00')
+        last_seen = datetime.fromisoformat(last_seen_str)
+        if last_seen.tzinfo is None:
+            last_seen = last_seen.replace(tzinfo=timezone.utc)
+        is_online = (now - last_seen) <= offline_threshold
+    except Exception:
+        is_online = False
 
+connectivity_status = "online" if is_online else "offline"
+connectivity_badge_class = "status-online" if is_online else "status-offline"
+connectivity_badge_text = "ONLINE" if is_online else "OFFLINE"
+
+# ---- HORIZONTAL HEADER ----
 st.markdown(f"""
 <div class="vm-header">
     <strong>{selected_vm_id} – {vm_name}</strong>
-    <span class="status-badge {status_class}">
-        {vm_status.upper()}
+    <span class="status-badge {connectivity_badge_class}">
+        {connectivity_badge_text}
     </span>
     &nbsp;&nbsp;
     <span class="vm-meta">
@@ -271,4 +288,4 @@ if metrics_data and metrics_data.get("metrics"):
         render_card("Current", f"{df['cpu_percent'].iloc[-1]:.1f}%")
 
 st.divider()
-st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v0.3.1")
+st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v0.3.2")
