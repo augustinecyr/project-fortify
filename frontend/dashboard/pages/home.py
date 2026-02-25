@@ -349,56 +349,6 @@ if vms_summary:
             </div>
         """, unsafe_allow_html=True)
         
-    # ============= AI RECOMMENDATIONS =============
-    st.markdown('<div class="section-header">🤖 AI Recommendations</div>', unsafe_allow_html=True)
-    st.markdown('<p class="section-subheader">Intelligent insights and proactive suggestions</p>', unsafe_allow_html=True)
-    
-    # Generate AI recommendations based on current state
-    recommendations = []
-    
-    if critical_vms > 0:
-        recommendations.append({
-            "priority": "high",
-            "title": "Critical Health Issues Detected",
-            "description": f"{critical_vms} VM(s) with health score <60. Recommend immediate investigation and resource scaling."
-        })
-    
-    if warning_vms > 0:
-        recommendations.append({
-            "priority": "medium",
-            "title": "Resource Optimization Opportunity",
-            "description": f"{warning_vms} VM(s) showing moderate health (60-80). Consider proactive optimization before issues escalate."
-        })
-    
-    if offline_vms > 0:
-        recommendations.append({
-            "priority": "medium",
-            "title": "Offline VMs Detected",
-            "description": f"{offline_vms} VM(s) currently offline. Verify if this is intentional or investigate connectivity issues."
-        })
-    
-    if fleet_health >= 80:
-        recommendations.append({
-            "priority": "low",
-            "title": "Fleet Operating Normally",
-            "description": f"All systems performing within optimal parameters. Fleet health score: {fleet_health:.0f}/100."
-        })
-    else:
-        recommendations.append({
-            "priority": "low",
-            "title": "Fleet-Wide Performance Trend",
-            "description": f"Fleet health at {fleet_health:.0f}/100. Monitor for sustained patterns that may indicate capacity planning needs."
-        })
-    
-    # Display recommendations
-    for rec in recommendations[:3]:  # Show top 3
-        icon = "🔴" if rec["priority"] == "high" else "🟡" if rec["priority"] == "medium" else "🟢"
-        st.markdown(f"""
-            <div class="alert-box">
-                <div class="alert-box-title">{icon} {rec['title']}</div>
-                <div class="alert-box-text">{rec['description']}</div>
-            </div>
-        """, unsafe_allow_html=True)
     
     # ============= VM TABLE WITH HEALTH AND CONNECTIVITY =============
     st.markdown('<div class="section-header">💻 Virtual Machines</div>', unsafe_allow_html=True)
@@ -514,6 +464,57 @@ if vms_summary:
     # Table footer
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     st.caption(f"📊 Displaying {len(vms_list)} virtual machines | 🔄 Last updated: {current_time}")
+        # ============= AI RECOMMENDATIONS =============
+    st.markdown('<div class="section-header">🤖 AI Recommendations</div>', unsafe_allow_html=True)
+    st.markdown('<p class="section-subheader">Intelligent insights and proactive suggestions</p>', unsafe_allow_html=True)
+    
+    # Generate AI recommendations based on current state
+    recommendations = []
+    
+    if critical_vms > 0:
+        recommendations.append({
+            "priority": "high",
+            "title": "Critical Health Issues Detected",
+            "description": f"{critical_vms} VM(s) with health score <60. Recommend immediate investigation and resource scaling."
+        })
+    
+    if warning_vms > 0:
+        recommendations.append({
+            "priority": "medium",
+            "title": "Resource Optimization Opportunity",
+            "description": f"{warning_vms} VM(s) showing moderate health (60-80). Consider proactive optimization before issues escalate."
+        })
+    
+    if offline_vms > 0:
+        recommendations.append({
+            "priority": "medium",
+            "title": "Offline VMs Detected",
+            "description": f"{offline_vms} VM(s) currently offline. Verify if this is intentional or investigate connectivity issues."
+        })
+    
+    if fleet_health >= 80:
+        recommendations.append({
+            "priority": "low",
+            "title": "Fleet Operating Normally",
+            "description": f"All systems performing within optimal parameters. Fleet health score: {fleet_health:.0f}/100."
+        })
+    else:
+        recommendations.append({
+            "priority": "low",
+            "title": "Fleet-Wide Performance Trend",
+            "description": f"Fleet health at {fleet_health:.0f}/100. Monitor for sustained patterns that may indicate capacity planning needs."
+        })
+    
+    # Display recommendations
+    for rec in recommendations[:3]:  # Show top 3
+        icon = "🔴" if rec["priority"] == "high" else "🟡" if rec["priority"] == "medium" else "🟢"
+        st.markdown(f"""
+            <div class="alert-box">
+                <div class="alert-box-title">{icon} {rec['title']}</div>
+                <div class="alert-box-text">{rec['description']}</div>
+            </div>
+        """, unsafe_allow_html=True)
+
 else:
     # Error state
     st.markdown("""

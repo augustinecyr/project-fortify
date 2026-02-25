@@ -42,14 +42,14 @@ $script:processes = @()   # each: [PSCustomObject]@{Name=; Process=; OutEvent=; 
 # -------------------------------
 # Recursively kill a process and its children
 # -------------------------------
-function Stop-ProcessTree($pid) {
-    if ($pid -le 0) { return }
+function Stop-ProcessTree($processId) {
+    if ($processId -le 0) { return }
     try {
         # Kill children first (using WMI for reliability)
-        Get-WmiObject Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.ParentProcessId -eq $pid } | ForEach-Object {
+        Get-WmiObject Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.ParentProcessId -eq $processId } | ForEach-Object {
             Stop-ProcessTree $_.ProcessId
         }
-        $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+        $proc = Get-Process -Id $processId -ErrorAction SilentlyContinue
         if ($proc) { $proc.Kill() }
     } catch {}
 }
@@ -57,7 +57,7 @@ function Stop-ProcessTree($pid) {
 # -------------------------------
 # Kill any leftover processes from previous runs (but NOT Docker)
 # -------------------------------
-function Kill-LeftoverProcesses {
+function Stop-LeftoverProcesses {
     Info "Checking for leftover processes from previous runs..."
     $projectPathEscaped = [regex]::Escape($projectRoot)
     $processes = Get-WmiObject Win32_Process -ErrorAction SilentlyContinue | Where-Object {
@@ -140,7 +140,7 @@ function Start-Service($name, $command, $workDir, $color) {
     # Output event – using $Event (capital E) for correct automatic variable
     $outEvent = Register-ObjectEvent -InputObject $p -EventName 'OutputDataReceived' -Action {
         $line = $EventArgs.Data
-        if ($line -ne $null) {
+        if ($null -ne $line) {
             $timestamp = Get-Date -Format "HH:mm:ss"
             $msgData = $Event.MessageData   # this is the hashtable passed below
             Write-Host "[$timestamp][$($msgData.Name)] " -ForegroundColor $msgData.Color -NoNewline
@@ -151,7 +151,7 @@ function Start-Service($name, $command, $workDir, $color) {
     # Error event – simpler: just pass the name
     $errEvent = Register-ObjectEvent -InputObject $p -EventName 'ErrorDataReceived' -Action {
         $line = $EventArgs.Data
-        if ($line -ne $null) {
+        if ($null -ne $line) {
             $timestamp = Get-Date -Format "HH:mm:ss"
             Write-Host "[$timestamp][$Event.MessageData] " -ForegroundColor Red -NoNewline
             Write-Host $line
@@ -176,7 +176,7 @@ function Start-Service($name, $command, $workDir, $color) {
 # -------------------------------
 try {
     # --- Pre‑cleanup: kill any leftover processes from previous runs (Docker untouched) ---
-    Kill-LeftoverProcesses
+    Stop-LeftoverProcesses
 
     # --- Start Docker ---
     Info "Starting Docker services (postgres + redis)..."
@@ -248,15 +248,12 @@ try {
 
     # --- Main monitoring loop ---
     while (!$script:stopping) {
-        $anyDead = $false
         foreach ($entry in $script:processes) {
             $p = $entry.Process
             if ($p.HasExited) {
                 Write-Label $entry.Name "Process exited unexpectedly (code $($p.ExitCode))!" Red
-                $anyDead = $true
             }
         }
-        # You could optionally break here if a critical service dies, but we'll just warn
         Start-Sleep -Seconds 2
     }
 }

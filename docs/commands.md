@@ -107,6 +107,10 @@ docker exec -it fortify-postgres psql -U fortify_user -d fortify
 ---
 
 ## Development Commands
+### Script method to boot services
+
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass  
+.\start-fortify.ps1
 
 ### Running the Dashboard
 
