@@ -105,8 +105,7 @@ def generate_comprehensive_metrics(vm_id: str) -> Dict[str, Any]:
     # Occasional spikes
     if random.random() < spike_chance:
         cpu = min(100.0, cpu + random.uniform(15, 30))
-        personality["last_anomaly_time"] = datetime.now(UTC)
-
+       
     # Memory (correlated with CPU)
     mem = effective_mem + random.uniform(-variance, variance) + 0.3 * (cpu - effective_cpu)
     mem = max(0.0, min(100.0, mem))
@@ -124,7 +123,10 @@ def generate_comprehensive_metrics(vm_id: str) -> Dict[str, Any]:
         net_out = random.uniform(0.3, 3.0)
 
     anomaly, alert_count = simulate_anomaly(vm_id, cpu, mem)
-
+    
+    if anomaly:
+        personality["last_anomaly_time"] = datetime.now(UTC)
+    
     return {
         "vm_id": vm_id,
         "timestamp": datetime.now(UTC).isoformat(),
@@ -134,7 +136,8 @@ def generate_comprehensive_metrics(vm_id: str) -> Dict[str, Any]:
         "network_in_mbps": round(net_in, 2),
         "network_out_mbps": round(net_out, 2),
         "alert_count": alert_count,
-        "anomaly_detected": anomaly
+        "anomaly_detected": anomaly,
+        "last_anomaly_time": personality["last_anomaly_time"].isoformat() if personality["last_anomaly_time"] else None,
     }
 
 
@@ -160,16 +163,20 @@ def update_vm_state(vm_id: str, metrics: Dict[str, Any], computed_health: int):
         status = "critical"
 
     update_payload = {
-        "current_cpu": metrics["cpu_percent"],
-        "current_memory": metrics["memory_percent"],
-        "current_disk": metrics["disk_percent"],
-        "network_in_mbps": metrics["network_in_mbps"],
-        "network_out_mbps": metrics["network_out_mbps"],
-        "health_score": computed_health,
-        "alert_count": metrics["alert_count"],
-        "anomaly_detected": metrics["anomaly_detected"],
-        "status": status
-    }
+    "current_cpu": metrics["cpu_percent"],
+    "current_memory": metrics["memory_percent"],
+    "current_disk": metrics["disk_percent"],
+    "network_in_mbps": metrics["network_in_mbps"],
+    "network_out_mbps": metrics["network_out_mbps"],
+    "health_score": computed_health,
+    "alert_count": metrics["alert_count"],
+    "anomaly_detected": metrics["anomaly_detected"],
+    "status": status,
+    # ADD THESE THREE:
+    "avg_memory_24h": metrics["memory_percent"],   # use current reading as rolling proxy
+    "avg_disk_24h": metrics["disk_percent"],
+    "last_anomaly_time": metrics.get("last_anomaly_time"),
+}
 
     try:
         response = requests.patch(f"{VM_UPDATE_URL}/{vm_id}", json=update_payload, timeout=2)
