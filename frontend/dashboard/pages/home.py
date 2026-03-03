@@ -526,4 +526,3 @@ else:
 
 # Footer
 st.divider()
-st.caption("⚡ Project Fortify - AI-Assisted Infrastructure Monitoring | Version 0.2.1 | Built with Streamlit")

@@ -155,12 +155,7 @@ def get_computed_health_score(vm_id: str) -> int:
 
 
 def update_vm_state(vm_id: str, metrics: Dict[str, Any], computed_health: int):
-    if computed_health >= 80:
-        status = "online"
-    elif computed_health >= 60:
-        status = "warning"
-    else:
-        status = "critical"
+    status ="online"
 
     update_payload = {
     "current_cpu": metrics["cpu_percent"],
@@ -172,7 +167,6 @@ def update_vm_state(vm_id: str, metrics: Dict[str, Any], computed_health: int):
     "alert_count": metrics["alert_count"],
     "anomaly_detected": metrics["anomaly_detected"],
     "status": status,
-    # ADD THESE THREE:
     "avg_memory_24h": metrics["memory_percent"],   # use current reading as rolling proxy
     "avg_disk_24h": metrics["disk_percent"],
     "last_anomaly_time": metrics.get("last_anomaly_time"),
