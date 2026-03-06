@@ -132,8 +132,7 @@ selected_vm_id = vm_id_by_display[selected_display]
 # ---- FETCH DATA ----
 vm_details = next((vm for vm in sorted_vms if vm['vm_id'] == selected_vm_id), None)
 
-with st.spinner("Loading VM details..."):
-    health_data = api_client.get_health_score(selected_vm_id)
+health_data = api_client.get_health_score(selected_vm_id)
 
 if not vm_details or not health_data:
     st.error("Unable to load VM details.")
