@@ -90,3 +90,25 @@ class FortifyAPIClient:
         Default limit of 1440 = 24 hours at 1-minute intervals.
         """
         return _self._make_request(f"/api/v1/metrics/cpu/{vm_id}?limit={limit}")
+    
+    @st.cache_data(ttl=120)
+    def get_memory_metrics(self, vm_id: str, limit: int = 1440) -> Optional[Dict]:
+        """Fetch memory metrics for a VM (percentage usage over time)."""
+        return self._make_request(f"/api/v1/metrics/memory/{vm_id}?limit={limit}")
+    
+    @st.cache_data(ttl=60)
+    def get_security_summary(_self) -> Optional[Dict]:
+        """
+        Get fleet-wide security aggregates.
+        Includes avg security score, vulnerability counts, firewall stats,
+        patch lag distribution, and per-VM security detail list.
+        """
+        return _self._make_request("/api/v1/security/summary")
+
+    @st.cache_data(ttl=120)
+    def get_optimization_recommendations(_self) -> Optional[Dict]:
+        """
+        Get rule-based VM optimization recommendations.
+        Includes fleet utilization summary and per-VM recommendation list.
+        """
+        return _self._make_request("/api/v1/optimization/recommendations")

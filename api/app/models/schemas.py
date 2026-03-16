@@ -156,6 +156,8 @@ class VMUpdate(BaseModel):
     security_score: Optional[int] = None
     alert_count: Optional[int] = None
     anomaly_detected: Optional[bool] = None
-    
+    avg_memory_24h: Optional[float] = None
+    avg_disk_24h: Optional[float] = None
+    last_anomaly_time: Optional[datetime] = None
     class Config:
         from_attributes = True
