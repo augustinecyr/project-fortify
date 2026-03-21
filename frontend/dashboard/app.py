@@ -48,6 +48,9 @@ pages = {
     ],
     "Security": [
         st.Page("pages/security_posture.py", title="Security Posture", icon=":material/security:"),
+    ],
+    "AI": [
+        st.Page("pages/ai_insights.py", title="AI Insights", icon=":material/psychology:"),
     ]
 }
 

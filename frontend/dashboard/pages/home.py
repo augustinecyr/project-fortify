@@ -109,6 +109,31 @@ div[data-testid="stButton"] button:hover {
     color: #0f172a;
     background: #f8fafc;
 }
+.ai-home-card {
+    background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
+    border: 1px solid #c7d2fe;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+}
+.ai-home-card-header {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #4f46e5;
+    margin-bottom: 0.5rem;
+}
+.ai-home-card-text {
+    font-size: 0.9rem;
+    color: #1e3a5f;
+    line-height: 1.65;
+    margin-bottom: 0.75rem;
+}
+.ai-home-card-footer {
+    font-size: 0.775rem;
+    color: #6366f1;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -275,6 +300,59 @@ if vms_summary:
                 <div style="font-weight:600;color:{fg};font-size:0.875rem;margin-bottom:0.2rem;">{rec['title']}</div>
                 <div style="color:{fg};font-size:0.8rem;opacity:0.85;">{rec['description']}</div>
             </div>""", unsafe_allow_html=True)
+
+    st.divider()
+
+    # ---- AI SUMMARY CARD ----
+    st.markdown('<div class="section-header">AI Fleet Intelligence</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-subheader">Latest Groq LLM analysis — run from AI Insights page</div>', unsafe_allow_html=True)
+
+    ai_data = api_client.get_ai_insights()
+
+    if ai_data and not ai_data.get("is_fallback"):
+        summary = ai_data.get("fleet_summary", "")
+        ts = ai_data.get("analysis_timestamp", "")
+        model = ai_data.get("model_used", "—")
+        anomaly_count = len(ai_data.get("anomalies", []))
+        rec_count = len(ai_data.get("recommendations", []))
+        try:
+            dt = datetime.fromisoformat(ts)
+            ts_fmt = dt.strftime("%d %b %Y, %H:%M UTC")
+        except Exception:
+            ts_fmt = ts
+
+        st.markdown(f"""
+            <div class="ai-home-card">
+                <div class="ai-home-card-header">🤖 AI Fleet Summary · {model}</div>
+                <div class="ai-home-card-text">{summary}</div>
+                <div class="ai-home-card-footer">
+                    ⚠️ {anomaly_count} anomal{"y" if anomaly_count == 1 else "ies"} &nbsp;·&nbsp;
+                    💡 {rec_count} recommendation{"" if rec_count == 1 else "s"} &nbsp;·&nbsp;
+                    🕐 Last analysed: {ts_fmt}
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        st.page_link("pages/ai_insights.py", label="View full AI analysis →", icon="🔍")
+
+    elif ai_data and ai_data.get("is_fallback"):
+        st.markdown("""
+            <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:0.875rem 1rem;border-radius:8px;">
+                <strong style="color:#92400e;">⚠️ AI service temporarily unavailable</strong><br>
+                <span style="font-size:0.825rem;color:#78350f;">Check your Groq API key and retry from the AI Insights page.</span>
+            </div>
+        """, unsafe_allow_html=True)
+
+    else:
+        st.markdown("""
+            <div style="background:#f8fafc;border:1px dashed #cbd5e1;border-radius:10px;
+                        padding:1.25rem 1.5rem;text-align:center;">
+                <div style="font-size:0.9rem;color:#64748b;">🤖 No AI analysis run yet.</div>
+                <div style="font-size:0.825rem;color:#94a3b8;margin-top:0.3rem;">
+                    Visit <strong>AI Insights</strong> to generate your first fleet analysis.
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        st.page_link("pages/ai_insights.py", label="Go to AI Insights →", icon="🤖")
 
     st.divider()
 
