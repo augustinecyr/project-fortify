@@ -233,7 +233,7 @@ try {
 
     # --- Start Simulator ---
     Start-Service -name "SIM" `
-                  -command "python -u data/generators/metrics_simulator.py" `
+                  -command "api\venv\Scripts\python.exe -u data/generators/metrics_simulator.py" `
                   -workDir $projectRoot `
                   -color "Yellow"
 

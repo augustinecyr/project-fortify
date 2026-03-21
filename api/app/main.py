@@ -3,12 +3,12 @@ FastAPI main application entry point for Project Fortify.
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import health, metrics, vms, security, optimization
+from app.routers import health, metrics, vms, security, optimization, ai
 
 app = FastAPI(
     title="Project Fortify API",
     description="AI-assisted AI-Ops solution for infrastructure monitoring",
-    version="0.4.0",
+    version="0.5.0",
 )
 
 # CORS middleware
@@ -26,12 +26,13 @@ app.include_router(metrics.router)
 app.include_router(vms.router)
 app.include_router(security.router, tags=["security"])
 app.include_router(optimization.router, tags=["optimization"])
+app.include_router(ai.router)
 
 @app.get("/")
 async def root():
     """Root endpoint."""
     return {
         "message": "Welcome to Project Fortify API",
-        "version": "0.4.0",
+        "version": "0.5.0",
         "docs": "/docs"
     }

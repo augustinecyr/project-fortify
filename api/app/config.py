@@ -21,11 +21,14 @@ class Settings(BaseSettings):
     # Analytics
     ANOMALY_THRESHOLD: float = 0.7
     SCORE_UPDATE_INTERVAL: int = 300  # seconds
+
+    # AI / LLM
+    GROQ_API_KEY: str = ""
     
     model_config = ConfigDict(
-        env_file=".env",
+        env_file=("../.env", ".env"),
         case_sensitive=True,
-        extra='ignore'  # Ignore extra fields from .env
+        extra='ignore'
     )
 
 
