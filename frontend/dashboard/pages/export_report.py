@@ -18,9 +18,42 @@ except ImportError as e:
     st.error(f"Import failed: {e}. Make sure all component files exist.")
     st.stop()
 
-st.set_page_config(page_title="Export VM Report", page_icon="📥", layout="wide")
-st.title("📥 Export VM Report")
-st.caption("Generate a comprehensive CSV or JSON report for any virtual machine.")
+st.markdown("""
+<style>
+.block-container { padding-top: 1.5rem !important; }
+.page-header-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.5px;
+    margin: 0 0 0.15rem 0;
+    line-height: 1.2;
+}
+.page-header-sub {
+    font-size: 0.825rem;
+    color: #64748b;
+    margin: 0;
+    font-weight: 400;
+}
+.header-divider {
+    border: none;
+    border-bottom: 1px solid #e2e8f0;
+    margin: 0.75rem 0 1.5rem 0;
+}
+.section-header {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #0f172a;
+    margin: 1.75rem 0 0.25rem 0;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+    <div class="page-header-title">Export Report</div>
+    <div class="page-header-sub">Generate and download comprehensive VM health and metrics reports</div>
+""", unsafe_allow_html=True)
+st.markdown('<hr class="header-divider">', unsafe_allow_html=True)
 
 # ---- INIT API ----
 api_client = FortifyAPIClient()
@@ -164,7 +197,7 @@ else:
     df = pd.DataFrame(columns=['timestamp', 'cpu_percent', 'source'])
 
 # ---- EXPORT BUTTONS ----
-st.markdown("### Generate Report")
+st.markdown('<div class="section-header">Generate Report</div>', unsafe_allow_html=True)
 col1, col2 = st.columns(2)
 ts = datetime.now().strftime('%Y%m%d_%H%M%S')
 

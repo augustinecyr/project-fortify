@@ -31,6 +31,37 @@ st.set_page_config(page_title="VM Health Monitor", layout="wide", page_icon="�
 # ---- CUSTOM CSS ----
 st.markdown("""
 <style>
+.block-container { padding-top: 1.5rem !important; }
+.page-header-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.5px;
+    margin: 0 0 0.15rem 0;
+    line-height: 1.2;
+}
+.page-header-sub {
+    font-size: 0.825rem;
+    color: #64748b;
+    margin: 0;
+    font-weight: 400;
+}
+.header-divider {
+    border: none;
+    border-bottom: 1px solid #e2e8f0;
+    margin: 0.75rem 0 1.5rem 0;
+}
+.section-header {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #0f172a;
+    margin: 1.75rem 0 0.25rem 0;
+}
+.section-subheader {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-bottom: 1rem;
+}
 .metric-card {
     background: #ffffff;
     border: 1px solid #e2e8f0;
@@ -92,8 +123,19 @@ def render_card(label, value, delta=None):
 
 # ---- INIT ----
 api_client = FortifyAPIClient()
-st.title("VM Health Monitor")
-st.caption("Comprehensive health scoring, performance analytics, and security monitoring")
+
+title_col, btn_col = st.columns([9, 0.4])
+with title_col:
+    st.markdown("""
+        <div class="page-header-title">VM Health Monitor</div>
+        <div class="page-header-sub">Comprehensive health scoring, performance analytics, and security monitoring</div>
+    """, unsafe_allow_html=True)
+with btn_col:
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("↻", help="Refresh", width="stretch"):
+        st.cache_data.clear()
+        st.rerun()
+st.markdown('<hr class="header-divider">', unsafe_allow_html=True)
 
 # ---- LOAD VM LIST ----
 vms_summary = api_client.get_vms_summary()
@@ -197,7 +239,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ---- VM OVERVIEW ----
-st.markdown("### VM Overview")
+st.markdown('<div class="section-header">VM Overview</div>', unsafe_allow_html=True)
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
@@ -228,7 +270,7 @@ with r4:
 st.divider()
 
 # ---- HEALTH ANALYSIS ----
-st.markdown("### 💚 Health Score Analysis")
+st.markdown('<div class="section-header">Health Score Analysis</div>', unsafe_allow_html=True)
 col_left, col_right = st.columns([1.2, 1])
 
 with col_left:
@@ -252,7 +294,7 @@ with col_right:
 st.divider()
 
 # ---- PERFORMANCE SECTION ----
-st.markdown("### 📊 Performance Metrics")
+st.markdown('<div class="section-header">Performance Metrics</div>', unsafe_allow_html=True)
 
 # 1️⃣ Put selector FIRST
 time_range = st.selectbox(

@@ -26,6 +26,26 @@ st.set_page_config(page_title="Cost Optimization", page_icon="📉", layout="wid
 # ---- CSS ----
 st.markdown("""
 <style>
+.block-container { padding-top: 1.5rem !important; }
+.page-header-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.5px;
+    margin: 0 0 0.15rem 0;
+    line-height: 1.2;
+}
+.page-header-sub {
+    font-size: 0.825rem;
+    color: #64748b;
+    margin: 0;
+    font-weight: 400;
+}
+.header-divider {
+    border: none;
+    border-bottom: 1px solid #e2e8f0;
+    margin: 0.75rem 0 1.5rem 0;
+}
 .metric-card {
     background: #ffffff;
     border: 1px solid #e2e8f0;
@@ -126,8 +146,18 @@ REC_TYPE_LABELS = {
 # ---- INIT ----
 api_client = FortifyAPIClient()
 
-st.markdown("# 📉 Cost Optimization")
-st.caption("Resource utilization analysis and actionable recommendations to right-size your VM fleet.")
+title_col, btn_col = st.columns([9, 0.4])
+with title_col:
+    st.markdown("""
+        <div class="page-header-title">Cost Optimization</div>
+        <div class="page-header-sub">Resource utilization analysis and actionable recommendations to right-size your VM fleet</div>
+    """, unsafe_allow_html=True)
+with btn_col:
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("↻", help="Refresh", width="stretch"):
+        st.cache_data.clear()
+        st.rerun()
+st.markdown('<hr class="header-divider">', unsafe_allow_html=True)
 
 # ---- FETCH DATA ----
 with st.spinner("Loading optimization data..."):
@@ -147,7 +177,7 @@ recommendations = opt_data.get("recommendations", [])
 fleet_vms = fleet.get("vms", [])
 
 # ---- KPI CARDS ----
-st.markdown('<div class="section-header">📊 Fleet Utilization Overview</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-header">Fleet Utilization Overview</div>', unsafe_allow_html=True)
 st.caption("Current resource utilization snapshot across all online VMs")
 
 k1, k2, k3, k4 = st.columns(4)
@@ -189,7 +219,7 @@ with k4:
 st.divider()
 
 # ---- UTILIZATION CHART ----
-st.markdown('<div class="section-header">💻 CPU vs Memory Utilization</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-header">CPU vs Memory Utilization</div>', unsafe_allow_html=True)
 st.caption("Each bubble represents a VM — color indicates efficiency zone")
 
 if fleet_vms:
@@ -270,7 +300,7 @@ if fleet_vms:
 st.divider()
 
 # ---- RECOMMENDATIONS ----
-st.markdown('<div class="section-header">🤖 Optimization Recommendations</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-header">Optimization Recommendations</div>', unsafe_allow_html=True)
 st.caption(f"{len(recommendations)} recommendation{'s' if len(recommendations) != 1 else ''} — sorted by severity")
 
 if recommendations:
@@ -314,7 +344,7 @@ else:
 st.divider()
 
 # ---- VM UTILIZATION TABLE ----
-st.markdown('<div class="section-header">📋 VM Utilization Breakdown</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-header">VM Utilization Breakdown</div>', unsafe_allow_html=True)
 st.caption("Full resource snapshot per VM — click VM ID to view detailed health metrics")
 
 if fleet_vms:
@@ -385,4 +415,4 @@ if fleet_vms:
     )
 
 st.divider()
-st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v0.4.0")
+st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v0.5.0")

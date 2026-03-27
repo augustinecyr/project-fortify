@@ -7,7 +7,7 @@ Place at: frontend/dashboard/pages/ai_insights.py
 import streamlit as st
 import sys
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime
 
 # ---- PATH FIXES ----
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "utils"))
@@ -21,25 +21,52 @@ except ImportError as e:
     st.stop()
 
 # ---- PAGE CONFIG ----
-st.set_page_config(page_title="AI Insights", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="AI Insights", page_icon="🛡️", layout="wide")
 
 # ---- CSS ----
 st.markdown("""
 <style>
+.block-container { padding-top: 1.5rem !important; }
+
+.page-header-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.5px;
+    margin: 0 0 0.15rem 0;
+    line-height: 1.2;
+}
+.page-header-sub {
+    font-size: 0.825rem;
+    color: #64748b;
+    margin: 0;
+    font-weight: 400;
+}
+.header-divider {
+    border: none;
+    border-bottom: 1px solid #e2e8f0;
+    margin: 0.75rem 0 1.5rem 0;
+}
 .section-header {
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     font-weight: 600;
     color: #0f172a;
-    margin: 1.25rem 0 0.4rem 0;
+    margin: 0 0 0.25rem 0;
 }
-.ai-summary-box {
-    background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
-    border: 1px solid #bfdbfe;
-    border-radius: 12px;
-    padding: 1.25rem 1.5rem;
-    font-size: 0.975rem;
+.section-subheader {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-bottom: 1rem;
+}
+.summary-bar {
+    background: #f8fafc;
+    border-left: 4px solid #6366f1;
+    border-radius: 0.5rem;
+    padding: 0.875rem 1rem;
+    font-size: 0.875rem;
     color: #1e3a5f;
-    line-height: 1.7;
+    line-height: 1.65;
+    margin-bottom: 1.5rem;
 }
 .anomaly-card {
     border-radius: 8px;
@@ -56,13 +83,14 @@ st.markdown("""
 }
 .rec-title {
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.875rem;
     color: #0f172a;
     margin-bottom: 0.2rem;
 }
 .rec-desc {
     font-size: 0.825rem;
     color: #475569;
+    line-height: 1.5;
 }
 .pred-card {
     background: #fafaf9;
@@ -85,26 +113,35 @@ st.markdown("""
 }
 .pred-timeframe {
     font-size: 0.775rem;
-    color: #78716c;
+    color: #94a3b8;
     margin-top: 0.3rem;
 }
-.timestamp-badge {
-    display: inline-block;
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    border-radius: 9999px;
-    padding: 3px 12px;
-    font-size: 0.75rem;
-    color: #64748b;
+div[data-testid="stButton"] button {
+    padding: 0.1rem 0.35rem !important;
+    font-size: 1rem;
+    line-height: 1;
+    min-height: 0 !important;
+    height: auto !important;
+    border-color: #e2e8f0;
+    color: #94a3b8;
+    background: white;
 }
-.fallback-banner {
-    background: #fef3c7;
-    border-left: 4px solid #f59e0b;
-    border-radius: 8px;
-    padding: 0.875rem 1rem;
-    margin-bottom: 1rem;
-    font-size: 0.875rem;
-    color: #92400e;
+div[data-testid="stButton"] button:hover {
+    border-color: #94a3b8;
+    color: #0f172a;
+    background: #f8fafc;
+}
+div[data-testid="stButton"] button[kind="primary"] {
+    background: #0f172a !important;
+    color: white !important;
+    border-color: #0f172a !important;
+    font-size: 0.8rem !important;
+    padding: 0.35rem 1rem !important;
+    border-radius: 6px !important;
+}
+div[data-testid="stButton"] button[kind="primary"]:hover {
+    background: #1e293b !important;
+    border-color: #1e293b !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -116,15 +153,14 @@ SEVERITY_STYLES = {
     "info":     ("#f0fdf4", "#166534", "#059669"),
 }
 
-PRIORITY_BADGE = {
-    "high":   ("🔴", "#fee2e2", "#991b1b"),
-    "medium": ("🟡", "#fef3c7", "#92400e"),
-    "low":    ("🟢", "#f0fdf4", "#166534"),
+PRIORITY_STYLES = {
+    "high":   ("#fee2e2", "#991b1b"),
+    "medium": ("#fef3c7", "#92400e"),
+    "low":    ("#f0fdf4", "#166534"),
 }
 
 
 def fmt_timestamp(ts: str) -> str:
-    """Format ISO timestamp to readable local time."""
     try:
         dt = datetime.fromisoformat(ts)
         return dt.strftime("%d %b %Y, %H:%M UTC")
@@ -135,45 +171,62 @@ def fmt_timestamp(ts: str) -> str:
 def render_anomalies(anomalies: list):
     if not anomalies:
         st.markdown("""
-            <div style="background:#f0fdf4;border-left:4px solid #059669;padding:0.875rem 1rem;border-radius:8px;">
-                <strong style="color:#166534;">✓ No anomalies detected</strong><br>
-                <span style="color:#14532d;font-size:0.825rem;">All VMs appear to be operating within normal parameters.</span>
+            <div style="background:#f0fdf4;border-left:4px solid #059669;
+                        padding:0.875rem 1rem;border-radius:8px;">
+                <div style="font-weight:600;color:#166534;font-size:0.875rem;margin-bottom:0.15rem;">
+                    No anomalies detected
+                </div>
+                <div style="color:#14532d;font-size:0.8rem;">
+                    All VMs are operating within normal parameters.
+                </div>
             </div>
         """, unsafe_allow_html=True)
         return
 
     for a in anomalies:
         bg, fg, border = SEVERITY_STYLES.get(a.get("severity", "info"), SEVERITY_STYLES["info"])
-        severity_label = a.get("severity", "info").upper()
         st.markdown(f"""
             <div class="anomaly-card" style="background:{bg};border-color:{border};">
                 <div style="font-weight:600;font-size:0.875rem;color:{fg};margin-bottom:0.2rem;">
-                    {a.get('vm_id', '—')} · {a.get('vm_name', '—')}
-                    <span style="font-size:0.75rem;font-weight:400;margin-left:8px;
-                        background:{border};color:white;padding:1px 8px;border-radius:9999px;">
-                        {severity_label}
+                    {a.get('vm_id', '—')} &nbsp;·&nbsp; {a.get('vm_name', '—')}
+                    <span style="font-size:0.7rem;font-weight:500;margin-left:8px;
+                        background:{border};color:white;padding:1px 8px;border-radius:9999px;
+                        text-transform:uppercase;letter-spacing:0.04em;">
+                        {a.get('severity', 'info')}
                     </span>
                 </div>
-                <div style="font-size:0.825rem;color:{fg};">{a.get('explanation', '—')}</div>
+                <div style="font-size:0.825rem;color:{fg};opacity:0.9;">
+                    {a.get('explanation', '—')}
+                </div>
             </div>
         """, unsafe_allow_html=True)
 
 
 def render_recommendations(recommendations: list):
     if not recommendations:
-        st.info("No recommendations generated.")
+        st.markdown("""
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;
+                        padding:0.875rem 1rem;border-radius:8px;">
+                <div style="font-weight:600;color:#475569;font-size:0.875rem;">
+                    No recommendations generated.
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
         return
 
     for rec in recommendations:
-        icon, bg, fg = PRIORITY_BADGE.get(rec.get("priority", "low"), PRIORITY_BADGE["low"])
+        bg, fg = PRIORITY_STYLES.get(rec.get("priority", "low"), PRIORITY_STYLES["low"])
         affected = rec.get("affected_vms", [])
         affected_str = ", ".join(affected) if affected else "—"
         st.markdown(f"""
             <div class="rec-card">
-                <div class="rec-title">
-                    {icon} {rec.get('title', '—')}
-                    <span style="font-size:0.75rem;font-weight:400;color:#64748b;margin-left:8px;">
-                        {rec.get('priority', '').upper()} PRIORITY
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:0.25rem;">
+                    <span class="rec-title">{rec.get('title', '—')}</span>
+                    <span style="font-size:0.7rem;font-weight:500;
+                        background:{bg};color:{fg};padding:1px 8px;
+                        border-radius:9999px;text-transform:uppercase;
+                        letter-spacing:0.04em;white-space:nowrap;">
+                        {rec.get('priority', '').upper()}
                     </span>
                 </div>
                 <div class="rec-desc">{rec.get('description', '—')}</div>
@@ -184,162 +237,230 @@ def render_recommendations(recommendations: list):
         """, unsafe_allow_html=True)
 
 
-def render_predictions(predictions: list):
-    if not predictions:
-        st.markdown("""
-            <div style="background:#f5f3ff;border-left:4px solid #8b5cf6;padding:0.875rem 1rem;border-radius:8px;">
-                <strong style="color:#4c1d95;">✓ No concerning trends detected</strong><br>
-                <span style="color:#5b21b6;font-size:0.825rem;">Fleet metrics appear stable over the observed period.</span>
-            </div>
-        """, unsafe_allow_html=True)
-        return
-
-    for pred in predictions:
-        st.markdown(f"""
-            <div class="pred-card">
-                <div class="pred-vm">{pred.get('vm_id', '—')} · {pred.get('vm_name', '—')}</div>
-                <div class="pred-text">{pred.get('prediction', '—')}</div>
-                <div class="pred-timeframe">⏱ {pred.get('timeframe', '—')}</div>
-            </div>
-        """, unsafe_allow_html=True)
-
 
 # ---- INIT ----
 api_client = FortifyAPIClient()
 
-# ---- HEADER ----
-st.markdown("# 🤖 AI Insights")
-st.caption("Groq LLM-powered fleet intelligence — on-demand analysis, anomaly explanations, and trend predictions.")
-
-st.divider()
-
-# ---- SESSION STATE ----
+# Pre-populate from Redis cache on first load — no Groq call, no empty state flash
 if "ai_insights" not in st.session_state:
-    st.session_state.ai_insights = None
-if "ai_insights_loading" not in st.session_state:
-    st.session_state.ai_insights_loading = False
+    cached = api_client.get_ai_insights()
+    st.session_state.ai_insights = cached if (cached and not cached.get("is_fallback")) else None
 
-# ---- ANALYSE BUTTON ----
-col_btn, col_info = st.columns([2, 5])
+# ---- HEADER ROW — title left, refresh button right (mirrors home.py) ----
+title_col, btn_col = st.columns([9, 0.4])
 
-with col_btn:
-    analyse_clicked = st.button(
-        "🔍 Analyse Fleet",
-        type="primary",
-        use_container_width=True,
-        help="Triggers a fresh LLM analysis of all VMs. Results are cached for 5 minutes."
-    )
-
-with col_info:
-    if st.session_state.ai_insights:
-        ts = st.session_state.ai_insights.get("analysis_timestamp", "")
-        model = st.session_state.ai_insights.get("model_used", "—")
-        vm_count = st.session_state.ai_insights.get("vm_count", "—")
-        st.markdown(f"""
-            <div style="padding-top:0.5rem;">
-                <span class="timestamp-badge">🕐 Last analysed: {fmt_timestamp(ts)}</span>
-                &nbsp;
-                <span class="timestamp-badge">🧠 {model}</span>
-                &nbsp;
-                <span class="timestamp-badge">🖥 {vm_count} VMs</span>
-            </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown("""
-            <div style="padding-top:0.6rem;font-size:0.875rem;color:#64748b;">
-                Click <strong>Analyse Fleet</strong> to run your first AI analysis.
-            </div>
-        """, unsafe_allow_html=True)
-
-# ---- TRIGGER ANALYSIS ----
-if analyse_clicked:
-    with st.spinner("Clearing cache and requesting fresh analysis..."):
-        api_client.clear_ai_cache()
-
-    with st.spinner("Analysing fleet with Groq LLM — this may take a few seconds..."):
-        result = api_client.get_ai_insights()
-
-    if result:
-        st.session_state.ai_insights = result
-        st.rerun()
-    else:
-        st.error("Failed to retrieve AI insights. Check the API is running and GROQ_API_KEY is set.")
-
-# ---- RENDER RESULTS ----
-if st.session_state.ai_insights:
-    data = st.session_state.ai_insights
-
-    # Fallback warning banner
-    if data.get("is_fallback"):
-        st.markdown("""
-            <div class="fallback-banner">
-                ⚠️ <strong>AI service is temporarily unavailable.</strong>
-                The Groq API could not be reached. Check your API key and connectivity, then try again.
-            </div>
-        """, unsafe_allow_html=True)
-
-    st.divider()
-
-    # ---- FLEET SUMMARY ----
-    st.markdown('<div class="section-header">📋 Fleet Summary</div>', unsafe_allow_html=True)
-    st.markdown(f"""
-        <div class="ai-summary-box">
-            {data.get('fleet_summary', 'No summary available.')}
+with title_col:
+    st.markdown("""
+        <div class="page-header-title">AI Insights</div>
+        <div class="page-header-sub">
+            On-demand LLM-powered analysis — fleet summary, anomalies, recommendations, and predictions
         </div>
     """, unsafe_allow_html=True)
 
+with btn_col:
     st.markdown("<br>", unsafe_allow_html=True)
+    analyse_clicked = st.button(
+        "↻",
+        help="Refresh analysis — clears cache and triggers a fresh Groq LLM call. Results cached for 5 minutes.",
+        width="stretch"
+    )
 
-    # ---- ANOMALIES + RECOMMENDATIONS side by side ----
+st.markdown('<hr class="header-divider">', unsafe_allow_html=True)
+
+# ---- META ROW — shown only when data exists ----
+if st.session_state.ai_insights:
+    data = st.session_state.ai_insights
+    ts       = fmt_timestamp(data.get("analysis_timestamp", ""))
+    model    = data.get("model_used", "—")
+    vm_count = data.get("vm_count", "—")
+    st.markdown(
+        f'<div class="section-subheader">'
+        f'Last analysed: {ts} &nbsp;·&nbsp; Model: {model} &nbsp;·&nbsp; {vm_count} VMs'
+        f'</div>',
+        unsafe_allow_html=True
+    )
+
+    # ---- FLEET SUMMARY ----
+    st.markdown(f'<div class="summary-bar">{data.get("fleet_summary", "—")}</div>',
+                unsafe_allow_html=True)
+
+    # ---- ANOMALIES | RECOMMENDATIONS ----
     left_col, right_col = st.columns(2)
 
     with left_col:
         anomalies = data.get("anomalies", [])
         st.markdown(
-            f'<div class="section-header">⚠️ Anomalies '
-            f'<span style="font-size:0.8rem;font-weight:400;color:#64748b;">({len(anomalies)} flagged)</span>'
-            f'</div>',
+            f'<div class="section-header">Anomalies'
+            f'<span style="font-size:0.8rem;font-weight:400;color:#94a3b8;margin-left:8px;">'
+            f'{len(anomalies)} flagged</span></div>',
             unsafe_allow_html=True
         )
+        st.markdown('<div class="section-subheader">VMs flagged by the LLM as operating outside normal parameters</div>',
+                    unsafe_allow_html=True)
         render_anomalies(anomalies)
 
     with right_col:
         recs = data.get("recommendations", [])
         st.markdown(
-            f'<div class="section-header">💡 Recommendations '
-            f'<span style="font-size:0.8rem;font-weight:400;color:#64748b;">({len(recs)} items)</span>'
-            f'</div>',
+            f'<div class="section-header">Recommendations'
+            f'<span style="font-size:0.8rem;font-weight:400;color:#94a3b8;margin-left:8px;">'
+            f'{len(recs)} items</span></div>',
             unsafe_allow_html=True
         )
+        st.markdown('<div class="section-subheader">Prioritised actions based on current fleet state</div>',
+                    unsafe_allow_html=True)
         render_recommendations(recs)
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.divider()
 
     # ---- PREDICTIONS ----
+    import plotly.graph_objects as go
+
     preds = data.get("predictions", [])
     st.markdown(
-        f'<div class="section-header">🔮 Predictions '
-        f'<span style="font-size:0.8rem;font-weight:400;color:#64748b;">({len(preds)} forecasts)</span>'
-        f'</div>',
+        f'<div class="section-header">Predictions'
+        f'<span style="font-size:0.8rem;font-weight:400;color:#94a3b8;margin-left:8px;">'
+        f'{len(preds)} forecasts</span></div>',
         unsafe_allow_html=True
     )
-    render_predictions(preds)
+    st.markdown(
+        '<div class="section-subheader">Urgency score derived from predicted timeframe — '
+        'shorter window = higher urgency</div>',
+        unsafe_allow_html=True
+    )
+
+    if preds:
+        # Map timeframe text to urgency score (0–100)
+        def timeframe_to_urgency(tf: str) -> int:
+            tf = tf.lower()
+            if "hour" in tf:
+                try:
+                    n = int(''.join(filter(str.isdigit, tf)) or 24)
+                    return max(10, 100 - int(n * 2))
+                except Exception:
+                    return 85
+            if "day" in tf:
+                try:
+                    n = int(''.join(filter(str.isdigit, tf)) or 7)
+                    return max(10, 100 - int(n * 10))
+                except Exception:
+                    return 50
+            if "week" in tf:
+                return 25
+            return 40
+
+        def urgency_color(score: int) -> str:
+            if score >= 75:
+                return "#dc2626"
+            if score >= 45:
+                return "#d97706"
+            return "#6366f1"
+
+        vm_labels    = [f"{p.get('vm_id','—')} · {p.get('vm_name','—')}" for p in preds]
+        urgency_vals = [timeframe_to_urgency(p.get("timeframe", "")) for p in preds]
+        colors       = [urgency_color(v) for v in urgency_vals]
+        timeframes   = [p.get("timeframe", "—") for p in preds]
+        predictions  = [p.get("prediction", "—") for p in preds]
+
+        fig = go.Figure()
+
+        fig.add_trace(go.Bar(
+            x=urgency_vals,
+            y=vm_labels,
+            orientation="h",
+            marker=dict(color=colors, opacity=0.85),
+            customdata=list(zip(timeframes, predictions)),
+            hovertemplate=(
+                "<b>%{y}</b><br>"
+                "Timeframe: %{customdata[0]}<br>"
+                "Urgency: %{x}/100<br>"
+                "<i>%{customdata[1]}</i>"
+                "<extra></extra>"
+            ),
+            text=timeframes,
+            textposition="outside",
+            textfont=dict(size=11, color="#64748b"),
+        ))
+
+        # Urgency threshold lines
+        fig.add_vline(x=75, line=dict(color="#dc2626", width=1, dash="dot"),
+                      annotation_text="High", annotation_position="top",
+                      annotation_font=dict(size=10, color="#dc2626"))
+        fig.add_vline(x=45, line=dict(color="#d97706", width=1, dash="dot"),
+                      annotation_text="Medium", annotation_position="top",
+                      annotation_font=dict(size=10, color="#d97706"))
+
+        fig.update_layout(
+            height=max(180, len(preds) * 56),
+            margin=dict(l=20, r=120, t=20, b=40),
+            xaxis=dict(
+                title="Urgency Score",
+                range=[0, 115],
+                showgrid=True,
+                gridcolor="#f1f5f9",
+                zeroline=False,
+            ),
+            yaxis=dict(
+                showgrid=False,
+                automargin=True,
+            ),
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            font=dict(family="Inter, sans-serif", size=12),
+            showlegend=False,
+        )
+
+        st.plotly_chart(fig, width="stretch")
+
+        # Prediction narratives below the chart
+        for pred in preds:
+            st.markdown(f"""
+                <div class="pred-card">
+                    <div class="pred-vm">
+                        {pred.get('vm_id', '—')} &nbsp;·&nbsp; {pred.get('vm_name', '—')}
+                        <span style="font-size:0.75rem;font-weight:400;color:#78716c;margin-left:8px;">
+                            {pred.get('timeframe', '—')}
+                        </span>
+                    </div>
+                    <div class="pred-text">{pred.get('prediction', '—')}</div>
+                </div>
+            """, unsafe_allow_html=True)
+
+    else:
+        st.markdown("""
+            <div style="background:#f5f3ff;border-left:4px solid #8b5cf6;
+                        padding:0.875rem 1rem;border-radius:8px;">
+                <div style="font-weight:600;color:#4c1d95;font-size:0.875rem;margin-bottom:0.15rem;">
+                    No concerning trends detected
+                </div>
+                <div style="color:#5b21b6;font-size:0.8rem;">
+                    Fleet metrics appear stable over the observed period.
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
 else:
     # ---- EMPTY STATE ----
-    st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("""
-        <div style="text-align:center;padding:3rem 1rem;">
-            <div style="font-size:3rem;margin-bottom:1rem;">🤖</div>
-            <div style="font-size:1.1rem;font-weight:600;color:#0f172a;margin-bottom:0.5rem;">
-                No analysis yet
+        <div style="padding:4rem 0;text-align:center;">
+            <div style="font-size:1rem;font-weight:600;color:#0f172a;margin-bottom:0.4rem;">
+                No analysis available
             </div>
-            <div style="font-size:0.875rem;color:#64748b;max-width:400px;margin:0 auto;">
-                Click <strong>Analyse Fleet</strong> above to generate AI-powered insights
-                for your entire VM fleet using Groq LLM.
+            <div style="font-size:0.875rem;color:#64748b;">
+                Click the <strong>↻</strong> button above to generate AI-powered insights for your fleet.
             </div>
         </div>
     """, unsafe_allow_html=True)
 
+# ---- TRIGGER (runs after render to avoid flash) ----
+if analyse_clicked:
+    with st.spinner("Requesting fresh analysis..."):
+        api_client.clear_ai_cache()
+        result = api_client.get_ai_insights()
+    if result:
+        st.session_state.ai_insights = result
+        st.rerun()
+    else:
+        st.error("Analysis failed. Check the API is running and GROQ_API_KEY is set.")
+
 st.divider()
-st.caption(f"Powered by Groq · llama-3.1-8b-instant · Project Fortify v0.5.0")

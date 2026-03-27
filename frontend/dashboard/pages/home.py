@@ -109,31 +109,6 @@ div[data-testid="stButton"] button:hover {
     color: #0f172a;
     background: #f8fafc;
 }
-.ai-home-card {
-    background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
-    border: 1px solid #c7d2fe;
-    border-radius: 12px;
-    padding: 1.25rem 1.5rem;
-    margin-bottom: 1rem;
-}
-.ai-home-card-header {
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #4f46e5;
-    margin-bottom: 0.5rem;
-}
-.ai-home-card-text {
-    font-size: 0.9rem;
-    color: #1e3a5f;
-    line-height: 1.65;
-    margin-bottom: 0.75rem;
-}
-.ai-home-card-footer {
-    font-size: 0.775rem;
-    color: #6366f1;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -303,56 +278,95 @@ if vms_summary:
 
     st.divider()
 
-    # ---- AI SUMMARY CARD ----
+    # ---- AI FLEET INTELLIGENCE ----
     st.markdown('<div class="section-header">AI Fleet Intelligence</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-subheader">Latest Groq LLM analysis — run from AI Insights page</div>', unsafe_allow_html=True)
 
     ai_data = api_client.get_ai_insights()
 
     if ai_data and not ai_data.get("is_fallback"):
-        summary = ai_data.get("fleet_summary", "")
-        ts = ai_data.get("analysis_timestamp", "")
-        model = ai_data.get("model_used", "—")
+        summary       = ai_data.get("fleet_summary", "—")
+        ts            = ai_data.get("analysis_timestamp", "")
+        model         = ai_data.get("model_used", "—")
         anomaly_count = len(ai_data.get("anomalies", []))
-        rec_count = len(ai_data.get("recommendations", []))
+        rec_count     = len(ai_data.get("recommendations", []))
+        pred_count    = len(ai_data.get("predictions", []))
+
         try:
-            dt = datetime.fromisoformat(ts)
+            dt     = datetime.fromisoformat(ts)
             ts_fmt = dt.strftime("%d %b %Y, %H:%M UTC")
         except Exception:
             ts_fmt = ts
 
+        st.markdown(
+            f'<div class="section-subheader">Model: {model} &nbsp;·&nbsp; Last analysed: {ts_fmt}</div>',
+            unsafe_allow_html=True
+        )
+
+        # Fleet summary narrative
         st.markdown(f"""
-            <div class="ai-home-card">
-                <div class="ai-home-card-header">🤖 AI Fleet Summary · {model}</div>
-                <div class="ai-home-card-text">{summary}</div>
-                <div class="ai-home-card-footer">
-                    ⚠️ {anomaly_count} anomal{"y" if anomaly_count == 1 else "ies"} &nbsp;·&nbsp;
-                    💡 {rec_count} recommendation{"" if rec_count == 1 else "s"} &nbsp;·&nbsp;
-                    🕐 Last analysed: {ts_fmt}
-                </div>
+            <div style="background:#f8fafc;border-left:4px solid #6366f1;padding:0.875rem 1rem;
+                        border-radius:0.5rem;margin-bottom:1rem;">
+                <div style="color:#1e3a5f;font-size:0.875rem;line-height:1.65;">{summary}</div>
             </div>
         """, unsafe_allow_html=True)
-        st.page_link("pages/ai_insights.py", label="View full AI analysis →", icon="🔍")
+
+        # Metric cards — each one links silently to AI Insights
+        ai_page   = "ai_insights"
+        ac_color  = "#dc2626" if anomaly_count > 0 else "#059669"
+        ac_delta  = "delta-negative" if anomaly_count > 0 else "delta-positive"
+        ac_sub    = "Requires attention" if anomaly_count > 0 else "None detected"
+        rc_color  = "#d97706" if rec_count > 0 else "#059669"
+        rc_delta  = "delta-neutral" if rec_count > 0 else "delta-positive"
+        rc_sub    = "Action items identified" if rec_count > 0 else "No actions needed"
+        pc_color  = "#6366f1" if pred_count > 0 else "#059669"
+        pc_sub    = "Trend forecasts available" if pred_count > 0 else "No trends flagged"
+
+        ai_c1, ai_c2, ai_c3 = st.columns(3)
+        with ai_c1:
+            st.markdown(f"""
+                <a href="{ai_page}" target="_self" style="text-decoration:none;">
+                <div class="metric-card">
+                    <div class="metric-card-header">Anomalies Detected</div>
+                    <div class="metric-card-value" style="color:{ac_color};">{anomaly_count}</div>
+                    <div class="metric-card-delta {ac_delta}">{ac_sub}</div>
+                </div></a>""", unsafe_allow_html=True)
+        with ai_c2:
+            st.markdown(f"""
+                <a href="{ai_page}" target="_self" style="text-decoration:none;">
+                <div class="metric-card">
+                    <div class="metric-card-header">Recommendations</div>
+                    <div class="metric-card-value" style="color:{rc_color};">{rec_count}</div>
+                    <div class="metric-card-delta {rc_delta}">{rc_sub}</div>
+                </div></a>""", unsafe_allow_html=True)
+        with ai_c3:
+            st.markdown(f"""
+                <a href="{ai_page}" target="_self" style="text-decoration:none;">
+                <div class="metric-card">
+                    <div class="metric-card-header">Predictions</div>
+                    <div class="metric-card-value" style="color:{pc_color};">{pred_count}</div>
+                    <div class="metric-card-delta delta-neutral">{pc_sub}</div>
+                </div></a>""", unsafe_allow_html=True)
 
     elif ai_data and ai_data.get("is_fallback"):
+        st.markdown('<div class="section-subheader">AI service temporarily unavailable</div>', unsafe_allow_html=True)
         st.markdown("""
-            <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:0.875rem 1rem;border-radius:8px;">
-                <strong style="color:#92400e;">⚠️ AI service temporarily unavailable</strong><br>
-                <span style="font-size:0.825rem;color:#78350f;">Check your Groq API key and retry from the AI Insights page.</span>
-            </div>
-        """, unsafe_allow_html=True)
+            <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:0.875rem 1rem;border-radius:0.5rem;">
+                <div style="font-weight:600;color:#92400e;font-size:0.875rem;margin-bottom:0.2rem;">Service Unavailable</div>
+                <div style="color:#78350f;font-size:0.8rem;">Check your Groq API key and run an analysis from the AI Insights page.</div>
+            </div>""", unsafe_allow_html=True)
 
     else:
-        st.markdown("""
-            <div style="background:#f8fafc;border:1px dashed #cbd5e1;border-radius:10px;
-                        padding:1.25rem 1.5rem;text-align:center;">
-                <div style="font-size:0.9rem;color:#64748b;">🤖 No AI analysis run yet.</div>
-                <div style="font-size:0.825rem;color:#94a3b8;margin-top:0.3rem;">
-                    Visit <strong>AI Insights</strong> to generate your first fleet analysis.
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-        st.page_link("pages/ai_insights.py", label="Go to AI Insights →", icon="🤖")
+        st.markdown('<div class="section-subheader">No analysis run yet — visit AI Insights to generate your first fleet analysis</div>', unsafe_allow_html=True)
+        ai_c1, ai_c2, ai_c3 = st.columns(3)
+        for col, label in zip([ai_c1, ai_c2, ai_c3], ["Anomalies Detected", "Recommendations", "Predictions"]):
+            with col:
+                st.markdown(f"""
+                    <a href="pages/ai_insights.py" target="_self" style="text-decoration:none;">
+                    <div class="metric-card">
+                        <div class="metric-card-header">{label}</div>
+                        <div class="metric-card-value" style="color:#cbd5e1;">—</div>
+                        <div class="metric-card-delta delta-neutral">Run analysis to populate</div>
+                    </div></a>""", unsafe_allow_html=True)
 
     st.divider()
 
