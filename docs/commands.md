@@ -222,8 +222,8 @@ Invoke-RestMethod -Method DELETE http://localhost:8000/api/v1/ai/cache
 
 | Cache Key | TTL | Notes |
 |---|---|---|
-| `ai:fleet_insights` | 300s (5 min) | Busted by Analyse button in UI |
-| `ai:vm_analysis:{vm_id}` | 120s (2 min) | Per VM, busted by cache clear |
+| `ai:fleet_insights` | 1800s (30 min) | Busted by ↻ button in UI |
+| `ai:vm_analysis:{vm_id}` | 600s (10 min) | Per VM, busted by cache clear |
 
 ### Groq Rate Limits (Free Tier)
 
@@ -581,3 +581,4 @@ SCORE_UPDATE_INTERVAL=300      # How often (seconds) health scores are recalcula
 
 # AI / LLM (Sprint 6)
 GROQ_API_KEY=gsk_your_key_here  # Get from https://console.groq.com/keys
+```

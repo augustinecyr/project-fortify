@@ -2,8 +2,8 @@
 AI Insights router — Groq-powered infrastructure analysis.
 
 Endpoints:
-    GET    /api/v1/ai/insights             — Fleet-wide analysis (Redis TTL: 300s)
-    GET    /api/v1/ai/vm-analysis/{vm_id}  — Single-VM deep dive (Redis TTL: 120s)
+    GET    /api/v1/ai/insights             — Fleet-wide analysis (Redis TTL: 1800s)
+    GET    /api/v1/ai/vm-analysis/{vm_id}  — Single-VM deep dive (Redis TTL: 600s)
     DELETE /api/v1/ai/cache                — Bust all AI cache keys
 
 Place at: api/app/routers/ai.py
@@ -124,8 +124,8 @@ async def get_fleet_insights(db: Session = Depends(get_db)):
     }
 
     if not is_fallback:
-        cache_set(cache_key, result, ttl=300)
-        logger.info("Cached fleet insights for 300s.")
+        cache_set(cache_key, result, ttl=1800)
+        logger.info("Cached fleet insights for 1800s.")
 
     return result
 
@@ -140,7 +140,7 @@ async def get_vm_analysis(vm_id: str, db: Session = Depends(get_db)):
     Returns graceful fallback if Groq is unavailable.
     """
     cache_key = f"ai:vm_analysis:{vm_id}"
-    model = "llama-3.3-70b-versatile"
+    model = "llama-3.1-8b-instant"
 
     # Cache hit
     cached = cache_get(cache_key)
@@ -163,7 +163,7 @@ async def get_vm_analysis(vm_id: str, db: Session = Depends(get_db)):
                 "timestamp": m.timestamp.isoformat(),
                 "cpu_percent": round(m.cpu_percent, 1),
             }
-            for m in sorted_metrics[:1440]
+            for m in sorted_metrics[:50]   # 50 recent points — sufficient for trend, avoids TPM limits
         ]
     else:
         context["cpu_history_24h"] = []
@@ -176,7 +176,7 @@ async def get_vm_analysis(vm_id: str, db: Session = Depends(get_db)):
         system_prompt=VM_SYSTEM_PROMPT,
         model=model,
         temperature=0.2,
-        max_tokens=1024,
+        max_tokens=2048,
         retries=1,
     )
 
@@ -195,8 +195,8 @@ async def get_vm_analysis(vm_id: str, db: Session = Depends(get_db)):
     }
 
     if not is_fallback:
-        cache_set(cache_key, result, ttl=120)
-        logger.info("Cached VM analysis for %s for 120s.", vm_id)
+        cache_set(cache_key, result, ttl=600)
+        logger.info("Cached VM analysis for %s for 600s.", vm_id)
 
     return result
 

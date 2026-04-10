@@ -160,8 +160,7 @@ with btn_col:
 st.markdown('<hr class="header-divider">', unsafe_allow_html=True)
 
 # ---- FETCH DATA ----
-with st.spinner("Loading optimization data..."):
-    opt_data = api_client.get_optimization_recommendations()
+opt_data = api_client.get_optimization_recommendations()
 
 if not opt_data:
     st.markdown("""

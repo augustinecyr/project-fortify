@@ -32,6 +32,54 @@ st.set_page_config(page_title="VM Health Monitor", layout="wide", page_icon="�
 st.markdown("""
 <style>
 .block-container { padding-top: 1.5rem !important; }
+.metric-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    height: 100%;
+}
+.info-label {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+}
+.info-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+.info-delta {
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+    color: #64748b;
+}
+.status-badge {
+    display: inline-block;
+    padding: 0.2rem 0.65rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin-left: 0.75rem;
+}
+.status-online { background-color: #dcfce7; color: #166534; }
+.status-offline { background-color: #fee2e2; color: #991b1b; }
+.vm-header {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    color: #0f172a;
+}
+.vm-header strong {
+    font-weight: 700;
+}
+.vm-meta {
+    color: #94a3b8;
+    font-size: 0.825rem;
+}
 .page-header-title {
     font-size: 1.6rem;
     font-weight: 700;
@@ -51,63 +99,6 @@ st.markdown("""
     border-bottom: 1px solid #e2e8f0;
     margin: 0.75rem 0 1.5rem 0;
 }
-.section-header {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #0f172a;
-    margin: 1.75rem 0 0.25rem 0;
-}
-.section-subheader {
-    font-size: 0.8rem;
-    color: #94a3b8;
-    margin-bottom: 1rem;
-}
-.metric-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 1rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    height: 100%;
-}
-.info-label {
-    font-size: 0.75rem;
-    color: #64748b;
-    font-weight: 600;
-    text-transform: uppercase;
-    margin-bottom: 0.35rem;
-}
-.info-value {
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: #1e293b;
-}
-.info-delta {
-    font-size: 0.85rem;
-    margin-top: 0.25rem;
-    color: #64748b;
-}
-.status-badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 1rem;
-    font-weight: 600;
-    margin-left: 0.75rem;
-}
-.status-online { background-color: #dcfce7; color: #166534; }
-.status-offline { background-color: #fee2e2; color: #991b1b; }
-
-.vm-header {
-    font-size: 1.25rem;
-    margin-bottom: 1rem;
-}
-.vm-header strong {
-    font-weight: 700;
-}
-.vm-meta {
-    color: #475569;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -123,12 +114,11 @@ def render_card(label, value, delta=None):
 
 # ---- INIT ----
 api_client = FortifyAPIClient()
-
 title_col, btn_col = st.columns([9, 0.4])
 with title_col:
     st.markdown("""
         <div class="page-header-title">VM Health Monitor</div>
-        <div class="page-header-sub">Comprehensive health scoring, performance analytics, and security monitoring</div>
+        <div class="page-header-sub">Virtual machine health scoring and performance analytics</div>
     """, unsafe_allow_html=True)
 with btn_col:
     st.markdown("<br>", unsafe_allow_html=True)
@@ -239,7 +229,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ---- VM OVERVIEW ----
-st.markdown('<div class="section-header">VM Overview</div>', unsafe_allow_html=True)
+st.markdown("### VM Overview")
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
@@ -259,18 +249,18 @@ st.divider()
 r1, r2, r3, r4 = st.columns(4)
 
 with r1:
-    render_card("CPU Usage", f"{vm_details.get('current_cpu', 0):.1f}%")
+    render_card("CPU Usage", f"{vm_details.get('current_cpu') or 0:.1f}%")
 with r2:
-    render_card("Memory Usage", f"{vm_details.get('current_memory', 0):.1f}%")
+    render_card("Memory Usage", f"{vm_details.get('current_memory') or 0:.1f}%")
 with r3:
-    render_card("Disk Usage", f"{vm_details.get('current_disk', 0):.1f}%")
+    render_card("Disk Usage", f"{vm_details.get('current_disk') or 0:.1f}%")
 with r4:
-    render_card("Network I/O", f"↓ {vm_details.get('network_in_mbps', 0):.1f} MB/s")
+    render_card("Network I/O", f"↓ {vm_details.get('network_in_mbps') or 0:.1f} MB/s")
 
 st.divider()
 
 # ---- HEALTH ANALYSIS ----
-st.markdown('<div class="section-header">Health Score Analysis</div>', unsafe_allow_html=True)
+st.markdown("### Health Score Analysis")
 col_left, col_right = st.columns([1.2, 1])
 
 with col_left:
@@ -294,7 +284,7 @@ with col_right:
 st.divider()
 
 # ---- PERFORMANCE SECTION ----
-st.markdown('<div class="section-header">Performance Metrics</div>', unsafe_allow_html=True)
+st.markdown("### Performance Metrics")
 
 # 1️⃣ Put selector FIRST
 time_range = st.selectbox(
@@ -415,5 +405,197 @@ with tab2:
     else:
         st.warning("Incomplete memory data available")
                                             
+st.divider()
+
+# ---- AI ANALYSIS ----
+RISK_STYLES = {
+    "critical": ("#fee2e2", "#991b1b", "#dc2626"),
+    "high":     ("#fee2e2", "#991b1b", "#dc2626"),
+    "medium":   ("#fef3c7", "#92400e", "#d97706"),
+    "low":      ("#f0fdf4", "#166534", "#059669"),
+}
+
+# Load from session state or fetch once
+ai_cache_key = f"vm_ai_{selected_vm_id}"
+if ai_cache_key not in st.session_state:
+    with st.spinner("Loading AI analysis..."):
+        ai_result = api_client.get_vm_analysis(selected_vm_id)
+    st.session_state[ai_cache_key] = (
+        ai_result if (ai_result and not ai_result.get("is_fallback")) else None
+    )
+
+ai_data = st.session_state.get(ai_cache_key)
+
+# Header row — title + refresh button
+ai_title_col, ai_btn_col = st.columns([9, 0.4])
+with ai_title_col:
+    st.markdown('<div class="section-header">AI Analysis</div>', unsafe_allow_html=True)
+with ai_btn_col:
+    if st.button("↻", key=f"refresh_ai_{selected_vm_id}",
+                 help="Clears cache and requests a fresh Groq analysis"):
+        api_client.clear_ai_cache()
+        if ai_cache_key in st.session_state:
+            del st.session_state[ai_cache_key]
+        st.rerun()
+
+if ai_data:
+    risk = ai_data.get("risk_level", "medium").lower()
+    rbg, rfg, rborder = RISK_STYLES.get(risk, RISK_STYLES["medium"])
+    ts = ai_data.get("analysis_timestamp", "")
+    model = ai_data.get("model_used", "—")
+    actions = ai_data.get("recommended_actions", [])
+
+    try:
+        ts_fmt = datetime.fromisoformat(ts).strftime("%d %b %Y, %H:%M UTC")
+    except Exception:
+        ts_fmt = ts
+
+    # Subheader with meta
+    st.markdown(
+        f'<div class="section-subheader">Model: {model} &nbsp;·&nbsp; Analysed: {ts_fmt}</div>',
+        unsafe_allow_html=True
+    )
+
+    # ---- TOP ROW — Risk + action count + prediction horizon ----
+    r1, r2, r3 = st.columns(3)
+
+    with r1:
+        st.markdown(f"""
+            <div class="metric-card" style="border-left:4px solid {rborder};">
+                <div class="info-label">Risk Level</div>
+                <div class="info-value" style="font-size:1.5rem;color:{rfg};">{risk.capitalize()}</div>
+                <div class="info-delta">Assessed by Groq LLM</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    with r2:
+        action_count = len(actions)
+        ac = "#dc2626" if action_count > 0 else "#059669"
+        st.markdown(f"""
+            <div class="metric-card">
+                <div class="info-label">Recommended Actions</div>
+                <div class="info-value" style="font-size:1.5rem;color:{ac};">{action_count}</div>
+                <div class="info-delta">{"Review actions below" if action_count > 0 else "No actions required"}</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    with r3:
+        prediction_text = ai_data.get("prediction", "")
+        # Extract timeframe hint from prediction text
+        horizon = "24–48 hours"
+        for phrase in ["24 hours", "48 hours", "7 days", "week", "month"]:
+            if phrase in prediction_text.lower():
+                horizon = phrase
+                break
+        st.markdown(f"""
+            <div class="metric-card">
+                <div class="info-label">Prediction Horizon</div>
+                <div class="info-value" style="font-size:1.5rem;color:#6366f1;">{horizon}</div>
+                <div class="info-delta">Forecast window</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ---- NARRATIVE ROW — Health + Anomaly side by side ----
+    left_col, right_col = st.columns(2)
+
+    with left_col:
+        st.markdown("""
+            <div style="font-size:0.75rem;font-weight:600;color:#64748b;
+                        text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem;">
+                Health Explanation
+            </div>
+        """, unsafe_allow_html=True)
+        st.markdown(f"""
+            <div style="background:#f8fafc;border-left:4px solid #6366f1;
+                        border-radius:0.5rem;padding:0.875rem 1rem;
+                        font-size:0.875rem;color:#1e3a5f;line-height:1.7;">
+                {ai_data.get('health_explanation', '—')}
+            </div>
+        """, unsafe_allow_html=True)
+
+    with right_col:
+        st.markdown("""
+            <div style="font-size:0.75rem;font-weight:600;color:#64748b;
+                        text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem;">
+                Anomaly Explanation
+            </div>
+        """, unsafe_allow_html=True)
+        st.markdown(f"""
+            <div style="background:#f8fafc;border-left:4px solid #e2e8f0;
+                        border-radius:0.5rem;padding:0.875rem 1rem;
+                        font-size:0.875rem;color:#334155;line-height:1.7;">
+                {ai_data.get('anomaly_explanation', '—')}
+            </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ---- ACTIONS + PREDICTION ROW ----
+    act_col, pred_col = st.columns(2)
+
+    with act_col:
+        st.markdown("""
+            <div style="font-size:0.75rem;font-weight:600;color:#64748b;
+                        text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem;">
+                Recommended Actions
+            </div>
+        """, unsafe_allow_html=True)
+        if actions:
+            for action in actions:
+                pri = action.get("priority", "low").lower()
+                abg, afg, aborder = RISK_STYLES.get(pri, RISK_STYLES["low"])
+                st.markdown(f"""
+                    <div style="background:{abg};border-left:3px solid {aborder};
+                                border-radius:6px;padding:0.65rem 0.875rem;
+                                margin-bottom:0.5rem;">
+                        <span style="font-size:0.7rem;font-weight:700;
+                                     text-transform:uppercase;letter-spacing:0.05em;
+                                     color:{afg};">{pri}</span>
+                        <span style="font-size:0.825rem;color:{afg};margin-left:8px;">
+                            {action.get('action', '—')}
+                        </span>
+                    </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+                <div style="background:#f0fdf4;border-left:3px solid #059669;
+                            border-radius:6px;padding:0.65rem 0.875rem;
+                            font-size:0.825rem;color:#166534;">
+                    No actions required — VM is operating normally.
+                </div>
+            """, unsafe_allow_html=True)
+
+    with pred_col:
+        st.markdown("""
+            <div style="font-size:0.75rem;font-weight:600;color:#64748b;
+                        text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem;">
+                Prediction
+            </div>
+        """, unsafe_allow_html=True)
+        st.markdown(f"""
+            <div style="background:#fafaf9;border-left:4px solid #8b5cf6;
+                        border-radius:0.5rem;padding:0.875rem 1rem;
+                        font-size:0.875rem;color:#44403c;line-height:1.7;">
+                {ai_data.get('prediction', '—')}
+            </div>
+        """, unsafe_allow_html=True)
+
+else:
+    st.markdown('<div class="section-subheader">Groq LLM deep-dive — click ↻ to run analysis</div>',
+                unsafe_allow_html=True)
+    st.markdown("""
+        <div style="background:#f8fafc;border:1px dashed #cbd5e1;border-radius:10px;
+                    padding:2rem 1.5rem;text-align:center;">
+            <div style="font-size:0.9rem;font-weight:600;color:#0f172a;margin-bottom:0.3rem;">
+                No analysis available
+            </div>
+            <div style="font-size:0.825rem;color:#64748b;">
+                Click the <strong>↻</strong> button above to generate an AI analysis for this VM.
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
 st.divider()
 st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")

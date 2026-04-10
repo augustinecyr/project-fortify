@@ -69,22 +69,23 @@ You will be given a JSON array of VM metrics. Respond ONLY with valid JSON in th
 
 Do not include any text outside the JSON object. Do not wrap the JSON in markdown code blocks."""
 
-VM_SYSTEM_PROMPT = """You are an expert infrastructure reliability engineer performing a deep-dive analysis of a single virtual machine.
-You will be given a JSON object of VM metrics including 24-hour CPU history. Respond ONLY with valid JSON in this exact structure:
+VM_SYSTEM_PROMPT = """You are an infrastructure reliability engineer analysing a single virtual machine.
+You will be given a JSON object of VM metrics. Respond ONLY with valid JSON in this exact structure:
 
 {
-  "health_explanation": "string — plain English explanation of the VM's current health state and what is driving the score",
-  "anomaly_explanation": "string — if an anomaly is detected, explain what is likely causing it; if none, state the VM looks normal",
+  "health_explanation": "string — 1-2 sentences explaining the VM health score",
+  "anomaly_explanation": "string — 1-2 sentences on anomalies detected, or state the VM looks normal",
   "risk_level": "critical|high|medium|low",
   "recommended_actions": [
     {
       "priority": "high|medium|low",
-      "action": "string — specific actionable step"
+      "action": "string — one specific actionable step, max 20 words"
     }
   ],
-  "prediction": "string — what is likely to happen in the next 24-48 hours if no action is taken"
+  "prediction": "string — 1-2 sentences on what may happen in the next 24-48 hours"
 }
 
+Keep all string values brief. Maximum 3 items in recommended_actions.
 Do not include any text outside the JSON object. Do not wrap the JSON in markdown code blocks."""
 
 
