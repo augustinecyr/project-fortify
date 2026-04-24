@@ -88,6 +88,7 @@ python data/generators/metrics_simulator.py
 # - Update CPU, memory, disk, network every few seconds
 # - Recalculate health scores, anomaly flags, and alerts continuously
 # - Apply VM-specific profiles (web servers, databases, workers)
+# - Log AI insights status at startup and every 5 minutes
 # - Run indefinitely until stopped (Ctrl+C)
 ```
 
@@ -107,10 +108,13 @@ docker exec -it fortify-postgres psql -U fortify_user -d fortify
 ---
 
 ## Development Commands
+
 ### Script method to boot services
 
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass  
-.\start-fortify.ps1
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\infrastructure\start-fortify.ps1
+```
 
 ### Running the Dashboard
 
@@ -153,19 +157,96 @@ docker-compose up -d api
 ### Testing Endpoints
 
 ```powershell
-# Using PowerShell
-Invoke-WebRequest -Uri http://localhost:8000/health -UseBasicParsing | Select-Object -ExpandProperty Content
-Invoke-WebRequest -Uri http://localhost:8000/api/v1/status -UseBasicParsing | Select-Object -ExpandProperty Content
-
-# Using curl (if available)
-curl http://localhost:8000/health
-curl http://localhost:8000/api/v1/status
+# Using PowerShell (Invoke-RestMethod recommended over curl)
+Invoke-RestMethod http://localhost:8000/api/v1/status
+Invoke-RestMethod http://localhost:8000/api/v1/vms/summary
 
 # Interactive API docs (browser)
 # Open: http://localhost:8000/docs
 ```
 
-### Code Quality
+---
+
+## AI / Groq Setup (Sprint 6)
+
+### Getting a Groq API Key
+
+1. Go to [https://console.groq.com/keys](https://console.groq.com/keys)
+2. Sign in or create a free account
+3. Click **Create API Key**, give it a name (e.g. `fortify-dev`)
+4. Copy the key — it starts with `gsk_`
+
+### Adding the Key to Your Environment
+
+Add the following line to your `.env` file at the project root:
+
+```bash
+GROQ_API_KEY=gsk_your_key_here
+```
+
+> **Note:** The `.env` file lives at the project root (same level as `docker-compose.yml`).
+> The API reads it via `env_file=("../.env", ".env")` in `config.py`.
+
+### Verifying the Key is Loaded
+
+```powershell
+# From api/ folder with venv active
+cd api
+.\venv\Scripts\Activate.ps1
+python -c "from app.config import settings; print('KEY:', repr(settings.GROQ_API_KEY))"
+```
+
+Expected output: `KEY: 'gsk_...'` (your actual key, not an empty string)
+
+### Testing AI Endpoints
+
+```powershell
+# Fleet-wide AI analysis (first call hits Groq, subsequent calls return Redis cache)
+Invoke-RestMethod http://localhost:8000/api/v1/ai/insights
+
+# Single VM deep-dive analysis
+Invoke-RestMethod http://localhost:8000/api/v1/ai/vm-analysis/vm-001
+
+# Bust the AI cache (forces fresh Groq call on next request)
+Invoke-RestMethod -Method DELETE http://localhost:8000/api/v1/ai/cache
+```
+
+### AI Models Used
+
+| Endpoint | Model | Purpose |
+|---|---|---|
+| `/api/v1/ai/insights` | `llama-3.1-8b-instant` | Fleet-wide summary, anomalies, recommendations |
+| `/api/v1/ai/vm-analysis/{vm_id}` | `llama-3.1-8b-instant` | Per-VM deep-dive analysis |
+
+### Redis Cache TTLs
+
+| Cache Key | TTL | Notes |
+|---|---|---|
+| `ai:fleet_insights` | 1800s (30 min) | Busted by ↻ button in UI |
+| `ai:vm_analysis:{vm_id}` | 600s (10 min) | Per VM, busted by cache clear |
+
+### Groq Rate Limits (Free Tier)
+
+- Requests per minute: 30
+- Tokens per minute: 15,000
+- The 5-minute Redis TTL prevents redundant calls during normal use
+- If rate-limited, the endpoint returns a graceful fallback response with `"is_fallback": true`
+
+### Debugging Groq Issues
+
+```powershell
+# Run the test script directly to see raw Groq output
+cd api
+.\venv\Scripts\Activate.ps1
+python test_groq.py
+
+# Check simulator AI status log (appears at startup and every 5 minutes)
+# Look for lines starting with: 🤖 [AI]
+```
+
+---
+
+## Code Quality
 
 ```powershell
 # Format code with black
@@ -378,9 +459,6 @@ pip install package-name
 # Check Docker is running
 docker --version
 
-# Restart Docker Desktop (if needed)
-# Close and reopen Docker Desktop application
-
 # View container logs
 docker logs fortify-postgres
 docker logs fortify-redis
@@ -399,7 +477,7 @@ docker image prune
 ### Port Conflicts
 
 ```powershell
-# Check what's using a port (PowerShell)
+# Check what's using a port
 Get-NetTCPConnection -LocalPort 8000
 
 # Kill process using port
@@ -423,48 +501,37 @@ docker restart fortify-postgres
 
 ## Quick Start Checklist
 
-### Starting a Full Development Session (API + Dashboard)
+### Starting a Full Development Session
 
 ```powershell
-# 1. Start Docker services
+# Option A — script (recommended)
+cd infrastructure
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\start-fortify.ps1
+
+# Option B — manual (4 terminals)
+# Terminal 1 — Docker
 docker-compose up -d postgres redis
 
-# 2. Terminal 1 - Start API
+# Terminal 2 — API
 cd api
 .\venv\Scripts\Activate.ps1
 uvicorn app.main:app --reload
 
-# 3. Terminal 2 - Start Metrics Simulator (keep running alongside API)
+# Terminal 3 — Simulator
 cd api
 .\venv\Scripts\Activate.ps1
 cd ..
 python data/generators/metrics_simulator.py
 
-# 4. Terminal 3 - Start Dashboard
+# Terminal 4 — Dashboard
 cd frontend/dashboard
 .\venv\Scripts\Activate.ps1
 streamlit run app.py
 
-# 5. Access the applications
-# API:       http://localhost:8000/docs
+# Access points
+# API docs:  http://localhost:8000/docs
 # Dashboard: http://localhost:8501
-```
-
-### Starting a New Development Session
-
-```powershell
-# 1. Start Docker services
-docker-compose up -d postgres redis
-
-# 2. Activate virtual environment
-cd api
-.\venv\Scripts\Activate.ps1
-
-# 3. Run API
-uvicorn app.main:app --reload
-
-# 4. Open browser to test
-# http://localhost:8000/docs
 ```
 
 ### Before Committing Code
@@ -490,36 +557,9 @@ git push
 
 ---
 
-## Useful Aliases (Optional)
-
-Add these to your PowerShell profile for shortcuts:
-
-```powershell
-# Edit profile
-notepad $PROFILE
-
-# Add these functions:
-function Start-Fortify {
-    docker-compose up -d postgres redis
-    cd api
-    .\venv\Scripts\Activate.ps1
-    uvicorn app.main:app --reload
-}
-
-function Stop-Fortify {
-    docker-compose down
-}
-
-function Test-Api {
-    Invoke-WebRequest -Uri http://localhost:8000/api/v1/status -UseBasicParsing | Select-Object -ExpandProperty Content
-}
-```
-
----
-
 ## Environment Variables Reference
 
-Key variables in `.env` file:
+Key variables in `.env` file at project root:
 
 ```bash
 # Database
@@ -535,7 +575,10 @@ REDIS_URL=redis://localhost:6379/0
 API_KEY=dev-api-key-12345
 LOG_LEVEL=INFO
 
-# Analytics (added Sprint 4)
+# Analytics
 ANOMALY_THRESHOLD=0.7          # Z-score threshold for CPU anomaly detection
-SCORE_UPDATE_INTERVAL=300      # How often (seconds) health scores are recalculated by simulator
+SCORE_UPDATE_INTERVAL=300      # How often (seconds) health scores are recalculated
+
+# AI / LLM (Sprint 6)
+GROQ_API_KEY=gsk_your_key_here  # Get from https://console.groq.com/keys
 ```

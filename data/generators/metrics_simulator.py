@@ -13,6 +13,7 @@ from typing import Dict, Any
 API_URL = "http://localhost:8000/api/v1/metrics"
 VM_UPDATE_URL = "http://localhost:8000/api/v1/vms"
 HEALTH_SCORE_URL = "http://localhost:8000/api/v1/health"
+AI_INSIGHTS_URL = "http://localhost:8000/api/v1/ai/insights"
 
 VM_IDS = [f"vm-{i:03d}" for i in range(1, 21)]
 
@@ -235,6 +236,45 @@ def send_metrics(vm_id: str):
         print(f"           ⚠️  {metrics['alert_count']} alert(s) detected")
 
 
+def check_ai_insights_status():
+    """
+    Poll the AI insights endpoint and log whether a cached result exists.
+    Called every 5 minutes from the main loop — non-blocking, silent on error.
+    Does NOT trigger a fresh Groq call (reads Redis cache only).
+    """
+    try:
+        response = requests.get(AI_INSIGHTS_URL, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            is_fallback = data.get("is_fallback", True)
+            ts = data.get("analysis_timestamp", "")
+            model = data.get("model_used", "—")
+            vm_count = data.get("vm_count", "—")
+            anomaly_count = len(data.get("anomalies", []))
+            rec_count = len(data.get("recommendations", []))
+
+            # Format timestamp
+            try:
+                dt = datetime.fromisoformat(ts)
+                ts_fmt = dt.strftime("%H:%M:%S")
+            except Exception:
+                ts_fmt = ts or "unknown"
+
+            if is_fallback:
+                print(f"\n  🤖 [AI] Groq service unavailable — no cached analysis found.")
+            else:
+                print(f"\n  🤖 [AI] Groq cache hit · model: {model} · {vm_count} VMs analysed")
+                print(f"           Last analysis: {ts_fmt} · "
+                      f"⚠️  {anomaly_count} anomal{'y' if anomaly_count == 1 else 'ies'} · "
+                      f"💡 {rec_count} recommendation{'s' if rec_count != 1 else ''}")
+        else:
+            print(f"\n  🤖 [AI] Insights endpoint returned HTTP {response.status_code}")
+    except requests.exceptions.Timeout:
+        print(f"\n  🤖 [AI] Insights check timed out (>10s)")
+    except Exception:
+        pass  # Silently skip — AI status is informational only
+
+
 def print_banner():
     print("=" * 70)
     print("  PROJECT FORTIFY - ENHANCED METRICS SIMULATOR v2.1")
@@ -278,6 +318,9 @@ def test_api_connectivity():
         print(f"  ⚠️  Health score endpoint timeout (>5s)")
     except Exception as e:
         print(f"  ⚠️  Health score endpoint error: {e}")
+
+    # AI insights status
+    check_ai_insights_status()
     print()
 
 
@@ -300,6 +343,7 @@ def main():
 
             if (datetime.now() - last_summary).total_seconds() >= 300:
                 print_summary_stats(metrics_count, start_time)
+                check_ai_insights_status()
                 last_summary = datetime.now()
 
             cycle_duration = time.time() - cycle_start
@@ -317,7 +361,6 @@ def main():
         import sys
         print(f"\n❌ Simulator crashed: {e}", file=sys.stderr)
         raise   # re-raise so the process exits with non‑zero code
-
 
 if __name__ == "__main__":
     main()

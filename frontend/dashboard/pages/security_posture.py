@@ -26,6 +26,26 @@ st.set_page_config(page_title="Security Posture", page_icon="🔒", layout="wide
 # ---- CSS (matches existing metric-card design system) ----
 st.markdown("""
 <style>
+.block-container { padding-top: 1.5rem !important; }
+.page-header-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.5px;
+    margin: 0 0 0.15rem 0;
+    line-height: 1.2;
+}
+.page-header-sub {
+    font-size: 0.825rem;
+    color: #64748b;
+    margin: 0;
+    font-weight: 400;
+}
+.header-divider {
+    border: none;
+    border-bottom: 1px solid #e2e8f0;
+    margin: 0.75rem 0 1.5rem 0;
+}
 .metric-card {
     background: #ffffff;
     border: 1px solid #e2e8f0;
@@ -105,8 +125,18 @@ def bool_icon(val):
 # ---- INIT ----
 api_client = FortifyAPIClient()
 
-st.markdown("# Security Posture")
-st.caption("Fleet-wide security analytics — vulnerability tracking, patch compliance, and risk distribution.")
+title_col, btn_col = st.columns([9, 0.4])
+with title_col:
+    st.markdown("""
+        <div class="page-header-title">Security Posture</div>
+        <div class="page-header-sub">Fleet-wide security analytics — vulnerability tracking, patch compliance, and risk distribution</div>
+    """, unsafe_allow_html=True)
+with btn_col:
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("↻", help="Refresh", width="stretch"):
+        st.cache_data.clear()
+        st.rerun()
+st.markdown('<hr class="header-divider">', unsafe_allow_html=True)
 
 # ---- FETCH DATA ----
 with st.spinner("Loading security data..."):
@@ -323,4 +353,4 @@ else:
     st.info("No VM security data available.")
 
 st.divider()
-st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v0.4.0")
+st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v0.5.0")
