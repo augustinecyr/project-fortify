@@ -223,13 +223,15 @@ Invoke-RestMethod -Method DELETE http://localhost:8000/api/v1/ai/cache
 | Cache Key | TTL | Notes |
 |---|---|---|
 | `ai:fleet_insights` | 1800s (30 min) | Busted by ↻ button in UI |
-| `ai:vm_analysis:{vm_id}` | 600s (10 min) | Per VM, busted by cache clear |
+| `ai:vm_analysis:{vm_id}` | 600s (10 min) | Per VM, busted by ↻ in VM Health Monitor |
+| `security:summary` | 60s (1 min) | Auto-expires, refreshes on next request |
+| `optimization:recommendations` | 120s (2 min) | Auto-expires, refreshes on next request |
 
 ### Groq Rate Limits (Free Tier)
 
 - Requests per minute: 30
 - Tokens per minute: 15,000
-- The 5-minute Redis TTL prevents redundant calls during normal use
+- Redis caching prevents redundant Groq calls — fleet insights cached for 30 min, per-VM for 10 min
 - If rate-limited, the endpoint returns a graceful fallback response with `"is_fallback": true`
 
 ### Debugging Groq Issues
@@ -243,6 +245,71 @@ python test_groq.py
 # Check simulator AI status log (appears at startup and every 5 minutes)
 # Look for lines starting with: 🤖 [AI]
 ```
+
+---
+
+## Integration Tests (Sprint 7)
+
+Integration tests hit a real `fortify_test` PostgreSQL database. Redis is patched to no-ops and Groq is mocked at the router boundary — no external API calls are made during the test run.
+
+### Prerequisites
+
+Docker must be running with PostgreSQL available (see Docker Commands above).
+
+```powershell
+# Create the test database — one-time setup
+docker exec -it fortify-postgres psql -U fortify_user -d postgres -c "CREATE DATABASE fortify_test;"
+```
+
+### Running Integration Tests
+
+```powershell
+cd api
+.\venv\Scripts\Activate.ps1
+
+# Run all integration tests
+pytest tests/integration/ -v
+
+# Run a specific integration test file
+pytest tests/integration/test_health.py -v
+pytest tests/integration/test_vms.py -v
+pytest tests/integration/test_security.py -v
+pytest tests/integration/test_metrics.py -v
+pytest tests/integration/test_optimization.py -v
+pytest tests/integration/test_ai.py -v
+
+# Run with coverage
+pytest tests/integration/ --cov=app --cov-report=html -v
+```
+
+### Running Unit Tests Only
+
+Unit tests do not require a database or Docker.
+
+```powershell
+cd api
+.\venv\Scripts\Activate.ps1
+pytest tests/test_anomaly_detection.py tests/test_scoring.py -v
+```
+
+### Running All Tests
+
+```powershell
+cd api
+.\venv\Scripts\Activate.ps1
+pytest tests/ -v
+```
+
+### Test Mocking Strategy
+
+| Component | Strategy |
+|---|---|
+| PostgreSQL | Separate `fortify_test` DB — real queries, isolated data |
+| Redis | `cache_get` / `cache_set` patched to no-ops (prevents stale cache hits) |
+| Groq LLM | `query_llm` mocked at router boundary (no real API calls or spend) |
+
+> Seed data (3 VMs + 20 CPU metrics) is inserted once per session and dropped on teardown.
+> Test VMs: `test-vm-001` (healthy), `test-vm-002` (critical), `test-vm-003` (offline).
 
 ---
 
