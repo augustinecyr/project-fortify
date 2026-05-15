@@ -75,3 +75,6 @@ data/temp/
 
 # OS
 Thumbs.db
+
+# Claude
+.claude
