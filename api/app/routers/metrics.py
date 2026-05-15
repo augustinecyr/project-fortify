@@ -4,7 +4,7 @@ CPU Metrics endpoints.
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from app.db.database import get_db
@@ -77,7 +77,7 @@ async def get_cpu_metrics(
 
     # Default time range: last 24 hours
     if end_time is None:
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
     if start_time is None:
         start_time = end_time - timedelta(hours=24)
 

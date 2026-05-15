@@ -139,8 +139,7 @@ with btn_col:
 st.markdown('<hr class="header-divider">', unsafe_allow_html=True)
 
 # ---- FETCH DATA ----
-with st.spinner("Loading security data..."):
-    security_data = api_client.get_security_summary()
+security_data = api_client.get_security_summary()
 
 if not security_data:
     st.markdown("""

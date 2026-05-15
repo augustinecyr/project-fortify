@@ -95,22 +95,21 @@ limit = {
 }[time_range]
 
 # ---- FETCH DATA ----
-with st.spinner("Fetching VM data and metrics..."):
-    # Get VM details from summary
-    vm_details = next((vm for vm in vms if vm['vm_id'] == selected_vm_id), None)
-    if not vm_details:
-        st.error("VM not found.")
-        st.stop()
+# Get VM details from summary
+vm_details = next((vm for vm in vms if vm['vm_id'] == selected_vm_id), None)
+if not vm_details:
+    st.error("VM not found.")
+    st.stop()
 
-    # Health score data
-    health_data = api_client.get_health_score(selected_vm_id)
-    if not health_data:
-        st.error("No health data received.")
-        st.stop()
+# Health score data
+health_data = api_client.get_health_score(selected_vm_id)
+if not health_data:
+    st.error("No health data received.")
+    st.stop()
 
-    # CPU metrics
-    metrics_data = api_client.get_cpu_metrics(selected_vm_id, limit=limit)
-    metrics_list = metrics_data.get("metrics", []) if metrics_data else []
+# CPU metrics
+metrics_data = api_client.get_cpu_metrics(selected_vm_id, limit=limit)
+metrics_list = metrics_data.get("metrics", []) if metrics_data else []
 
 # ---- BUILD EXPORT DATA DICTIONARY (same as in vm_health_monitor) ----
 vm_name = vm_details.get("name", "Unknown")

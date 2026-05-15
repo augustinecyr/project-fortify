@@ -2,7 +2,7 @@
 Security endpoints.
 Provides fleet-wide security aggregates for the Security Posture dashboard page.
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -52,7 +52,7 @@ async def get_security_summary(db: Session = Depends(get_db)):
             "vms": [],
         }
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # ---- Aggregates ----
     security_scores = [vm.security_score for vm in vms if vm.security_score is not None]
@@ -69,7 +69,9 @@ async def get_security_summary(db: Session = Depends(get_db)):
         if vm.last_patch_date is None:
             patch_lag["90_plus_days"] += 1
             continue
-        days_since_patch = (now - vm.last_patch_date).days
+        # Postgres DateTime columns are naive — attach UTC before comparing
+        patch_date = vm.last_patch_date.replace(tzinfo=timezone.utc)
+        days_since_patch = (now - patch_date).days
         if days_since_patch <= 7:
             patch_lag["0_7_days"] += 1
         elif days_since_patch <= 30:
@@ -84,7 +86,8 @@ async def get_security_summary(db: Session = Depends(get_db)):
     for vm in sorted(vms, key=lambda v: (v.security_score or 0)):  # worst first
         days_since_patch = None
         if vm.last_patch_date:
-            days_since_patch = (now - vm.last_patch_date).days
+            patch_date = vm.last_patch_date.replace(tzinfo=timezone.utc)
+            days_since_patch = (now - patch_date).days
 
         # Derive score tier for the distribution chart
         score = vm.security_score or 0

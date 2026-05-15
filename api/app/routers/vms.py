@@ -5,13 +5,12 @@ Now returns all VM fields including host, security, resources, etc.
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List
 from fastapi import Request
 from app.db.database import get_db
 from app.db.models import VirtualMachine, CPUMetric, HealthScore
 from app.models.schemas import VMUpdate
-from datetime import datetime
 import sys
 from pathlib import Path
 
@@ -52,7 +51,7 @@ async def get_vms_summary(db: Session = Depends(get_db)):
     vms = db.query(VirtualMachine).all()
     
     summary = []
-    end_time = datetime.utcnow()
+    end_time = datetime.now(timezone.utc)
     start_time = end_time - timedelta(hours=24)
     
     for vm in vms:
@@ -217,7 +216,7 @@ async def get_vm_details(vm_id: str, db: Session = Depends(get_db)):
         return {"error": f"VM '{vm_id}' not found"}, 404
     
     # Calculate 24h metrics
-    end_time = datetime.utcnow()
+    end_time = datetime.now(timezone.utc)
     start_time = end_time - timedelta(hours=24)
     
     avg_cpu = (
@@ -358,7 +357,7 @@ async def create_cpu_metric(
     vm.current_cpu = cpu_percent
     
     # Update 24-hour average CPU
-    day_ago = datetime.utcnow() - timedelta(days=1)
+    day_ago = datetime.now(timezone.utc) - timedelta(days=1)
     avg = db.query(func.avg(CPUMetric.cpu_percent)).filter(
         CPUMetric.vm_id == vm_id,
         CPUMetric.timestamp >= day_ago
@@ -379,13 +378,13 @@ async def update_vm(vm_id: str, update_data: VMUpdate, db: Session = Depends(get
         raise HTTPException(status_code=404, detail=f"VM '{vm_id}' not found")
     
     # Update only the fields that are provided
-    update_dict = update_data.dict(exclude_unset=True)
+    update_dict = update_data.model_dump(exclude_unset=True)
     for key, value in update_dict.items():
         setattr(vm, key, value)
     
     # Update the 'updated_at' timestamp if your model has it
     if hasattr(vm, 'updated_at'):
-        vm.updated_at = datetime.utcnow()
+        vm.updated_at = datetime.now(timezone.utc)
     
     db.commit()
     
