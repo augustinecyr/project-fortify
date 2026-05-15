@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "components"))
 try:
     from api_client import FortifyAPIClient
 except ImportError as e:
-    st.error(f"Import failed: {e}")
+    st.markdown('<div class="error-card"><strong>Unable to load data</strong>Verify the backend is running and refresh the page.</div>', unsafe_allow_html=True)
     st.stop()
 
 # ---- PAGE CONFIG ----
@@ -142,6 +142,21 @@ div[data-testid="stButton"] button[kind="primary"] {
 div[data-testid="stButton"] button[kind="primary"]:hover {
     background: #1e293b !important;
     border-color: #1e293b !important;
+}
+.error-card {
+    background: #fee2e2;
+    border-left: 4px solid #ef4444;
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    color: #7f1d1d;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+.error-card strong {
+    display: block;
+    color: #991b1b;
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -461,6 +476,7 @@ if analyse_clicked:
         st.session_state.ai_insights = result
         st.rerun()
     else:
-        st.error("Analysis failed. Check the API is running and GROQ_API_KEY is set.")
+        st.markdown('<div class="error-card"><strong>Unable to load data</strong>Verify the backend is running and refresh the page.</div>', unsafe_allow_html=True)
 
 st.divider()
+st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v0.6.0")
