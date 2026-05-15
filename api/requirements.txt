@@ -29,4 +29,4 @@ mypy==1.7.1
 
 # Utilities
 python-dotenv==1.2.2
-python-multipart==0.0.26
+python-multipart==0.0.27
