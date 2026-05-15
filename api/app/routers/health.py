@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.db.database import get_db
 from app.db.models import VirtualMachine, CPUMetric
@@ -60,7 +60,7 @@ async def get_vm_health(vm_id: str, db: Session = Depends(get_db)):
         )
 
     # Fetch last 24 hours of CPU metrics
-    end_time = datetime.utcnow()
+    end_time = datetime.now(timezone.utc)
     start_time = end_time - timedelta(hours=24)
 
     metrics = (

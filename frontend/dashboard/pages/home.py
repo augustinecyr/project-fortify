@@ -109,6 +109,21 @@ div[data-testid="stButton"] button:hover {
     color: #0f172a;
     background: #f8fafc;
 }
+.error-card {
+    background: #fee2e2;
+    border-left: 4px solid #ef4444;
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    color: #7f1d1d;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+.error-card strong {
+    display: block;
+    color: #991b1b;
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -423,11 +438,12 @@ if vms_summary:
         width="stretch", hide_index=True, height=400,
         column_order=["vm_id", "name", "connectivity", "health_badge", "current_cpu", "health_score", "alert_count"]
     )
-    st.caption(f"Displaying {len(vms_list)} VMs — {datetime.now().strftime('%H:%M:%S')}")
+    st.caption(f"Displaying {len(vms_list)} VMs — {datetime.now().strftime('%H:%M:%S')} | Project Fortify v0.6.0")
 
 else:
     st.markdown("""
-        <div style="background:#fee2e2;border-left:4px solid #dc2626;padding:1rem;border-radius:0.5rem;">
-            <div style="font-weight:600;color:#991b1b;margin-bottom:0.2rem;">Connection Error</div>
-            <div style="color:#7f1d1d;font-size:0.875rem;">Unable to load VM data. Please check the API connection and try again.</div>
+        <div class="error-card">
+            <strong>Unable to load data</strong>
+            Verify the backend is running and refresh the page.
         </div>""", unsafe_allow_html=True)
+    st.stop()

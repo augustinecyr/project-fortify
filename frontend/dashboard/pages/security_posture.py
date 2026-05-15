@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "components"))
 try:
     from api_client import FortifyAPIClient
 except ImportError as e:
-    st.error(f"Import failed: {e}. Make sure all component files exist.")
+    st.markdown(f'<div class="error-card"><strong>Unable to load data</strong>Verify the backend is running and refresh the page.</div>', unsafe_allow_html=True)
     st.stop()
 
 # ---- PAGE CONFIG ----
@@ -79,6 +79,36 @@ st.markdown("""
     color: #0f172a;
     margin: 1.5rem 0 0.5rem 0;
 }
+.error-card {
+    background: #fee2e2;
+    border-left: 4px solid #ef4444;
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    color: #7f1d1d;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+.error-card strong {
+    display: block;
+    color: #991b1b;
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+div[data-testid="stButton"] button {
+    padding: 0.1rem 0.35rem !important;
+    font-size: 1rem;
+    line-height: 1;
+    min-height: 0 !important;
+    height: auto !important;
+    border-color: #e2e8f0;
+    color: #94a3b8;
+    background: white;
+}
+div[data-testid="stButton"] button:hover {
+    border-color: #94a3b8;
+    color: #0f172a;
+    background: #f8fafc;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -139,16 +169,10 @@ with btn_col:
 st.markdown('<hr class="header-divider">', unsafe_allow_html=True)
 
 # ---- FETCH DATA ----
-with st.spinner("Loading security data..."):
-    security_data = api_client.get_security_summary()
+security_data = api_client.get_security_summary()
 
 if not security_data:
-    st.markdown("""
-        <div style="background:#fee2e2;border-left:4px solid #ef4444;padding:1rem;border-radius:0.5rem;">
-            <strong style="color:#991b1b;">⚠️ Unable to load security data</strong><br>
-            <span style="color:#7f1d1d;font-size:0.875rem;">Check that the API is running at localhost:8000</span>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="error-card"><strong>Unable to load data</strong>Verify the backend is running and refresh the page.</div>', unsafe_allow_html=True)
     st.stop()
 
 vms = security_data.get("vms", [])
@@ -353,4 +377,4 @@ else:
     st.info("No VM security data available.")
 
 st.divider()
-st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v0.5.0")
+st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v0.6.0")

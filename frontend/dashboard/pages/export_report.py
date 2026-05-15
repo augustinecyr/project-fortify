@@ -15,7 +15,7 @@ try:
     from api_client import FortifyAPIClient
     from utils.export import generate_csv_report, generate_json_report
 except ImportError as e:
-    st.error(f"Import failed: {e}. Make sure all component files exist.")
+    st.markdown('<div class="error-card"><strong>Unable to load data</strong>Verify the backend is running and refresh the page.</div>', unsafe_allow_html=True)
     st.stop()
 
 st.markdown("""
@@ -46,22 +46,59 @@ st.markdown("""
     color: #0f172a;
     margin: 1.75rem 0 0.25rem 0;
 }
+.error-card {
+    background: #fee2e2;
+    border-left: 4px solid #ef4444;
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    color: #7f1d1d;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+.error-card strong {
+    display: block;
+    color: #991b1b;
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+div[data-testid="stButton"] button {
+    padding: 0.1rem 0.35rem !important;
+    font-size: 1rem;
+    line-height: 1;
+    min-height: 0 !important;
+    height: auto !important;
+    border-color: #e2e8f0;
+    color: #94a3b8;
+    background: white;
+}
+div[data-testid="stButton"] button:hover {
+    border-color: #94a3b8;
+    color: #0f172a;
+    background: #f8fafc;
+}
 </style>
 """, unsafe_allow_html=True)
-
-st.markdown("""
-    <div class="page-header-title">Export Report</div>
-    <div class="page-header-sub">Generate and download comprehensive VM health and metrics reports</div>
-""", unsafe_allow_html=True)
-st.markdown('<hr class="header-divider">', unsafe_allow_html=True)
 
 # ---- INIT API ----
 api_client = FortifyAPIClient()
 
+title_col, btn_col = st.columns([9, 0.4])
+with title_col:
+    st.markdown("""
+        <div class="page-header-title">Export Report</div>
+        <div class="page-header-sub">Generate and download comprehensive VM health and metrics reports</div>
+    """, unsafe_allow_html=True)
+with btn_col:
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("↻", help="Refresh", width="stretch"):
+        st.cache_data.clear()
+        st.rerun()
+st.markdown('<hr class="header-divider">', unsafe_allow_html=True)
+
 # ---- LOAD VM LIST ----
 vms_summary = api_client.get_vms_summary()
 if not vms_summary:
-    st.error("No VMs found. Is the API running?")
+    st.markdown('<div class="error-card"><strong>Unable to load data</strong>Verify the backend is running and refresh the page.</div>', unsafe_allow_html=True)
     st.stop()
 
 vms = vms_summary.get("vms", [])
@@ -95,22 +132,21 @@ limit = {
 }[time_range]
 
 # ---- FETCH DATA ----
-with st.spinner("Fetching VM data and metrics..."):
-    # Get VM details from summary
-    vm_details = next((vm for vm in vms if vm['vm_id'] == selected_vm_id), None)
-    if not vm_details:
-        st.error("VM not found.")
-        st.stop()
+# Get VM details from summary
+vm_details = next((vm for vm in vms if vm['vm_id'] == selected_vm_id), None)
+if not vm_details:
+    st.markdown('<div class="error-card"><strong>Unable to load data</strong>Verify the backend is running and refresh the page.</div>', unsafe_allow_html=True)
+    st.stop()
 
-    # Health score data
-    health_data = api_client.get_health_score(selected_vm_id)
-    if not health_data:
-        st.error("No health data received.")
-        st.stop()
+# Health score data
+health_data = api_client.get_health_score(selected_vm_id)
+if not health_data:
+    st.markdown('<div class="error-card"><strong>Unable to load data</strong>Verify the backend is running and refresh the page.</div>', unsafe_allow_html=True)
+    st.stop()
 
-    # CPU metrics
-    metrics_data = api_client.get_cpu_metrics(selected_vm_id, limit=limit)
-    metrics_list = metrics_data.get("metrics", []) if metrics_data else []
+# CPU metrics
+metrics_data = api_client.get_cpu_metrics(selected_vm_id, limit=limit)
+metrics_list = metrics_data.get("metrics", []) if metrics_data else []
 
 # ---- BUILD EXPORT DATA DICTIONARY (same as in vm_health_monitor) ----
 vm_name = vm_details.get("name", "Unknown")
@@ -214,7 +250,7 @@ with col1:
         data=csv_data,
         file_name=f"{selected_vm_id}_report_{ts}.csv",
         mime="text/csv",
-        use_container_width=True
+        width="stretch"
     )
 
 with col2:
@@ -230,9 +266,12 @@ with col2:
         data=json_data,
         file_name=f"{selected_vm_id}_report_{ts}.json",
         mime="application/json",
-        use_container_width=True
+        width="stretch"
     )
 
 # Optional: Show a preview of the data
 with st.expander("Preview Exported Data"):
     st.json(export_data)
+
+st.divider()
+st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v0.6.0")
