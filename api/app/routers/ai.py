@@ -17,6 +17,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
+from app.auth.dependencies import get_current_user
+from app.models.user import User
 from app.db.models import VirtualMachine
 from app.utils.redis_client import cache_get, cache_set, get_redis_client
 from app.utils.groq_client import (
@@ -79,7 +81,7 @@ def _build_vm_context(vm: VirtualMachine) -> Dict[str, Any]:
 # GET /api/v1/ai/insights
 # ---------------------------------------------------------------------------
 @router.get("/insights")
-async def get_fleet_insights(db: Session = Depends(get_db)):
+async def get_fleet_insights(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """
     Fleet-wide AI analysis. Redis-cached for 300s.
     Returns graceful fallback if Groq is unavailable.
@@ -134,7 +136,7 @@ async def get_fleet_insights(db: Session = Depends(get_db)):
 # GET /api/v1/ai/vm-analysis/{vm_id}
 # ---------------------------------------------------------------------------
 @router.get("/vm-analysis/{vm_id}")
-async def get_vm_analysis(vm_id: str, db: Session = Depends(get_db)):
+async def get_vm_analysis(vm_id: str, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """
     Single-VM deep-dive analysis using llama3-70b. Redis-cached per vm_id for 120s.
     Returns graceful fallback if Groq is unavailable.
@@ -205,7 +207,7 @@ async def get_vm_analysis(vm_id: str, db: Session = Depends(get_db)):
 # DELETE /api/v1/ai/cache — manual cache bust for the Analyse button
 # ---------------------------------------------------------------------------
 @router.delete("/cache")
-async def clear_ai_cache():
+async def clear_ai_cache(_: User = Depends(get_current_user)):
     """Clear all cached AI insights. Called by the frontend Analyse button."""
     try:
         r = get_redis_client()

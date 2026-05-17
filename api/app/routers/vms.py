@@ -10,6 +10,8 @@ from typing import List
 from fastapi import Request
 from app.db.database import get_db
 from app.db.models import VirtualMachine, CPUMetric, HealthScore
+from app.auth.dependencies import get_current_user
+from app.models.user import User
 from app.models.schemas import VMUpdate
 import sys
 from pathlib import Path
@@ -21,7 +23,7 @@ router = APIRouter(prefix="/api/v1", tags=["vms"])
 
 
 @router.get("/vms")
-async def get_all_vms(db: Session = Depends(get_db)):
+async def get_all_vms(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """
     Get all virtual machines with basic information.
     """
@@ -41,7 +43,7 @@ async def get_all_vms(db: Session = Depends(get_db)):
 
 
 @router.get("/vms/summary")
-async def get_vms_summary(db: Session = Depends(get_db)):
+async def get_vms_summary(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """
     Get all VMs with their complete information including health, security, and resources.
     This is optimized for dashboard overview - returns everything in one query.
@@ -205,7 +207,7 @@ async def get_vms_summary(db: Session = Depends(get_db)):
 
 
 @router.get("/vms/{vm_id}")
-async def get_vm_details(vm_id: str, db: Session = Depends(get_db)):
+async def get_vm_details(vm_id: str, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """
     Get detailed information for a single VM.
     Returns all fields from the VirtualMachine model.
@@ -294,7 +296,8 @@ async def get_vm_details(vm_id: str, db: Session = Depends(get_db)):
 @router.post("/metrics")
 async def create_cpu_metric(
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
     """
     Ingest a single CPU metric.
@@ -369,7 +372,7 @@ async def create_cpu_metric(
     return {"status": "success", "id": db_metric.id}
 
 @router.patch("/vms/{vm_id}")
-async def update_vm(vm_id: str, update_data: VMUpdate, db: Session = Depends(get_db)):
+async def update_vm(vm_id: str, update_data: VMUpdate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """
     Update VM fields (partial update). Used by the metrics simulator to keep VM state current.
     """

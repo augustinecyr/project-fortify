@@ -14,6 +14,36 @@ API_URL = "http://localhost:8000/api/v1/metrics"
 VM_UPDATE_URL = "http://localhost:8000/api/v1/vms"
 HEALTH_SCORE_URL = "http://localhost:8000/api/v1/health"
 AI_INSIGHTS_URL = "http://localhost:8000/api/v1/ai/insights"
+AUTH_URL = "http://localhost:8000/auth/token"
+SIM_USERNAME = "admin"
+SIM_PASSWORD = "admin123"
+
+_token: str | None = None
+
+
+def fetch_token() -> str | None:
+    global _token
+    try:
+        r = requests.post(
+            AUTH_URL,
+            data={"username": SIM_USERNAME, "password": SIM_PASSWORD},
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=5,
+        )
+        if r.status_code == 200:
+            _token = r.json()["access_token"]
+            return _token
+        print(f"  ⚠️  Auth failed: HTTP {r.status_code}")
+    except Exception as e:
+        print(f"  ⚠️  Auth error: {e}")
+    return None
+
+
+def auth_headers() -> dict:
+    global _token
+    if not _token:
+        fetch_token()
+    return {"Authorization": f"Bearer {_token}"} if _token else {}
 
 VM_IDS = [f"vm-{i:03d}" for i in range(1, 21)]
 
@@ -143,15 +173,18 @@ def generate_comprehensive_metrics(vm_id: str) -> Dict[str, Any]:
 
 
 def get_computed_health_score(vm_id: str) -> int:
-    try:
-        response = requests.get(f"{HEALTH_SCORE_URL}/{vm_id}", timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            return int(data.get("health_score", 0))
-        else:
+    for attempt in range(2):
+        try:
+            response = requests.get(f"{HEALTH_SCORE_URL}/{vm_id}", headers=auth_headers(), timeout=5)
+            if response.status_code == 200:
+                return int(response.json().get("health_score", 0))
+            if response.status_code == 401 and attempt == 0:
+                fetch_token()
+                continue
             print(f"  ⚠️  Health score fetch failed for {vm_id}: HTTP {response.status_code}")
-    except Exception as e:
-        print(f"  ⚠️  Health score fetch error for {vm_id}: {e}")
+        except Exception as e:
+            print(f"  ⚠️  Health score fetch error for {vm_id}: {e}")
+        break
     return 0
 
 
@@ -173,16 +206,20 @@ def update_vm_state(vm_id: str, metrics: Dict[str, Any], computed_health: int):
     "last_anomaly_time": metrics.get("last_anomaly_time"),
 }
 
-    try:
-        response = requests.patch(f"{VM_UPDATE_URL}/{vm_id}", json=update_payload, timeout=2)
-        if response.status_code in [200, 204]:
-            return True
-        else:
+    for attempt in range(2):
+        try:
+            response = requests.patch(f"{VM_UPDATE_URL}/{vm_id}", json=update_payload, headers=auth_headers(), timeout=2)
+            if response.status_code in [200, 204]:
+                return True
+            if response.status_code == 401 and attempt == 0:
+                fetch_token()
+                continue
             print(f"  ⚠️  PATCH failed for {vm_id}: HTTP {response.status_code} – {response.text}")
             return False
-    except Exception as e:
-        print(f"  ⚠️  PATCH error for {vm_id}: {e}")
-        return False
+        except Exception as e:
+            print(f"  ⚠️  PATCH error for {vm_id}: {e}")
+            return False
+    return False
 
 
 def send_cpu_metric(vm_id: str, cpu_percent: float, timestamp: str):
@@ -192,16 +229,20 @@ def send_cpu_metric(vm_id: str, cpu_percent: float, timestamp: str):
         "cpu_percent": cpu_percent,
         "source": "simulator"
     }
-    try:
-        response = requests.post(API_URL, json=payload, timeout=3)
-        if response.status_code == 200:
-            return True
-        else:
+    for attempt in range(2):
+        try:
+            response = requests.post(API_URL, json=payload, headers=auth_headers(), timeout=3)
+            if response.status_code == 200:
+                return True
+            if response.status_code == 401 and attempt == 0:
+                fetch_token()
+                continue
             print(f"  ⚠️  POST failed for {vm_id}: HTTP {response.status_code} – {response.text}")
             return False
-    except Exception as e:
-        print(f"  Connection error sending CPU: {e}")
-        return False
+        except Exception as e:
+            print(f"  Connection error sending CPU: {e}")
+            return False
+    return False
 
 
 def send_metrics(vm_id: str):
@@ -243,7 +284,7 @@ def check_ai_insights_status():
     Does NOT trigger a fresh Groq call (reads Redis cache only).
     """
     try:
-        response = requests.get(AI_INSIGHTS_URL, timeout=10)
+        response = requests.get(AI_INSIGHTS_URL, headers=auth_headers(), timeout=10)
         if response.status_code == 200:
             data = response.json()
             is_fallback = data.get("is_fallback", True)
@@ -306,9 +347,15 @@ def test_api_connectivity():
     except:
         print(f"  ⚠️  Cannot reach API at {API_URL}")
 
+    token = fetch_token()
+    if token:
+        print(f"  ✓ Auth token obtained successfully")
+    else:
+        print(f"  ⚠️  Could not obtain auth token — requests will fail")
+
     try:
         test_vm = VM_IDS[0]
-        response = requests.get(f"{HEALTH_SCORE_URL}/{test_vm}", timeout=5)
+        response = requests.get(f"{HEALTH_SCORE_URL}/{test_vm}", headers=auth_headers(), timeout=5)
         if response.status_code == 200:
             data = response.json()
             print(f"  ✓ Health score endpoint: OK (test: {test_vm} = {data.get('health_score', 'N/A')})")
