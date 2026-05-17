@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     ANOMALY_THRESHOLD: float = 0.7
     SCORE_UPDATE_INTERVAL: int = 300  # seconds
 
+    # Auth / JWT
+    SECRET_KEY: str = "change-me-in-production"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
     # AI / LLM
     GROQ_API_KEY: str = ""
     
