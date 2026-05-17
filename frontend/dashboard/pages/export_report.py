@@ -82,6 +82,10 @@ div[data-testid="stButton"] button:hover {
 # ---- INIT API ----
 api_client = FortifyAPIClient()
 
+token = st.session_state.get("token")
+if not token:
+    st.switch_page("pages/login.py")
+
 title_col, btn_col = st.columns([9, 0.4])
 with title_col:
     st.markdown("""
@@ -96,7 +100,7 @@ with btn_col:
 st.markdown('<hr class="header-divider">', unsafe_allow_html=True)
 
 # ---- LOAD VM LIST ----
-vms_summary = api_client.get_vms_summary()
+vms_summary = api_client.get_vms_summary(token=token)
 if not vms_summary:
     st.markdown('<div class="error-card"><strong>Unable to load data</strong>Verify the backend is running and refresh the page.</div>', unsafe_allow_html=True)
     st.stop()
@@ -139,13 +143,13 @@ if not vm_details:
     st.stop()
 
 # Health score data
-health_data = api_client.get_health_score(selected_vm_id)
+health_data = api_client.get_health_score(selected_vm_id, token=token)
 if not health_data:
     st.markdown('<div class="error-card"><strong>Unable to load data</strong>Verify the backend is running and refresh the page.</div>', unsafe_allow_html=True)
     st.stop()
 
 # CPU metrics
-metrics_data = api_client.get_cpu_metrics(selected_vm_id, limit=limit)
+metrics_data = api_client.get_cpu_metrics(selected_vm_id, limit=limit, token=token)
 metrics_list = metrics_data.get("metrics", []) if metrics_data else []
 
 # ---- BUILD EXPORT DATA DICTIONARY (same as in vm_health_monitor) ----

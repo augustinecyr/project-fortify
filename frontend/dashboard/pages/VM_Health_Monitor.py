@@ -144,6 +144,11 @@ def render_card(label, value, delta=None):
 
 # ---- INIT ----
 api_client = FortifyAPIClient()
+
+token = st.session_state.get("token")
+if not token:
+    st.switch_page("pages/login.py")
+
 title_col, btn_col = st.columns([9, 0.4])
 with title_col:
     st.markdown("""
@@ -158,7 +163,7 @@ with btn_col:
 st.markdown('<hr class="header-divider">', unsafe_allow_html=True)
 
 # ---- LOAD VM LIST ----
-vms_summary = api_client.get_vms_summary()
+vms_summary = api_client.get_vms_summary(token=token)
 if not vms_summary:
     st.markdown('<div class="error-card"><strong>Unable to load data</strong>Verify the backend is running and refresh the page.</div>', unsafe_allow_html=True)
     st.stop()
@@ -194,7 +199,7 @@ selected_vm_id = vm_id_by_display[selected_display]
 # ---- FETCH DATA ----
 vm_details = next((vm for vm in sorted_vms if vm['vm_id'] == selected_vm_id), None)
 
-health_data = api_client.get_health_score(selected_vm_id)
+health_data = api_client.get_health_score(selected_vm_id, token=token)
 
 if not vm_details or not health_data:
     st.markdown('<div class="error-card"><strong>Unable to load data</strong>Verify the backend is running and refresh the page.</div>', unsafe_allow_html=True)
@@ -340,7 +345,7 @@ tab1, tab2 = st.tabs(["💻 CPU Performance", "🧠 Memory Status"])
 # ===============================
 with tab1:
 
-    metrics_data = api_client.get_cpu_metrics(selected_vm_id, limit=limit)
+    metrics_data = api_client.get_cpu_metrics(selected_vm_id, limit=limit, token=token)
 
     if metrics_data and metrics_data.get("metrics"):
         df = pd.DataFrame(metrics_data["metrics"])
@@ -449,7 +454,7 @@ RISK_STYLES = {
 ai_cache_key = f"vm_ai_{selected_vm_id}"
 if ai_cache_key not in st.session_state:
     with st.spinner("Loading AI analysis..."):
-        ai_result = api_client.get_vm_analysis(selected_vm_id)
+        ai_result = api_client.get_vm_analysis(selected_vm_id, token=token)
     st.session_state[ai_cache_key] = (
         ai_result if (ai_result and not ai_result.get("is_fallback")) else None
     )
@@ -464,7 +469,7 @@ with ai_btn_col:
     if st.button("↻", key=f"refresh_ai_{selected_vm_id}",
                  help="Clears cache and requests a fresh Groq analysis",
                  width="stretch"):
-        api_client.clear_ai_cache()
+        api_client.clear_ai_cache(token=token)
         if ai_cache_key in st.session_state:
             del st.session_state[ai_cache_key]
         st.rerun()
