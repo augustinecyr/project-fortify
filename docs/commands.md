@@ -159,10 +159,67 @@ docker-compose up -d api
 ```powershell
 # Using PowerShell (Invoke-RestMethod recommended over curl)
 Invoke-RestMethod http://localhost:8000/api/v1/status
-Invoke-RestMethod http://localhost:8000/api/v1/vms/summary
 
 # Interactive API docs (browser)
 # Open: http://localhost:8000/docs
+```
+
+---
+
+## Authentication (Sprint 8)
+
+All API routes except `GET /health` and `GET /api/v1/status` require a Bearer token.
+
+### Seed the Admin User (one-time)
+
+```powershell
+cd api
+.\venv\Scripts\Activate.ps1
+cd ..
+python data/seeds/seed_users.py
+# Creates: username=admin / password=admin123
+```
+
+### Obtain a Token
+
+```powershell
+# PowerShell
+$response = Invoke-RestMethod -Method POST http://localhost:8000/auth/token `
+    -ContentType "application/x-www-form-urlencoded" `
+    -Body "username=admin&password=admin123"
+$token = $response.access_token
+Write-Host "Token: $token"
+```
+
+### Call a Protected Endpoint
+
+```powershell
+# Use the token from above
+Invoke-RestMethod http://localhost:8000/api/v1/vms/summary `
+    -Headers @{ Authorization = "Bearer $token" }
+
+# One-liner (obtain + call in sequence)
+$token = (Invoke-RestMethod -Method POST http://localhost:8000/auth/token `
+    -ContentType "application/x-www-form-urlencoded" `
+    -Body "username=admin&password=admin123").access_token
+Invoke-RestMethod http://localhost:8000/api/v1/vms/summary `
+    -Headers @{ Authorization = "Bearer $token" }
+```
+
+### Verify a Bad Token is Rejected
+
+```powershell
+Invoke-RestMethod http://localhost:8000/api/v1/vms/summary `
+    -Headers @{ Authorization = "Bearer invalid.token.here" }
+# Expected: 401 Unauthorized
+```
+
+### Run Auth Integration Tests
+
+```powershell
+cd api
+.\venv\Scripts\Activate.ps1
+pytest tests/integration/test_auth.py -v
 ```
 
 ---
@@ -271,6 +328,7 @@ cd api
 pytest tests/integration/ -v
 
 # Run a specific integration test file
+pytest tests/integration/test_auth.py -v
 pytest tests/integration/test_health.py -v
 pytest tests/integration/test_vms.py -v
 pytest tests/integration/test_security.py -v

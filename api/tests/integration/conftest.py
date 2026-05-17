@@ -24,6 +24,11 @@ from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.db.database import Base, get_db
 from app.db.models import VirtualMachine, CPUMetric
+from app.models.user import User
+from app.auth.security import get_password_hash
+
+_SUITE_USER = "suite_admin"
+_SUITE_PASS = "suitepass123"
 
 # ---------------------------------------------------------------------------
 # Test database — separate from dev DB, never touches fortify
@@ -154,6 +159,14 @@ def seed_test_data(setup_test_database):
                 source="test",
             ))
         db.add_all(metrics)
+
+        if not db.query(User).filter(User.username == _SUITE_USER).first():
+            db.add(User(
+                username=_SUITE_USER,
+                hashed_password=get_password_hash(_SUITE_PASS),
+                is_active=True,
+            ))
+
         db.commit()
     finally:
         db.close()
@@ -185,3 +198,15 @@ def client():
             yield c
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def auth_client(client):
+    """TestClient pre-loaded with a valid Bearer token for protected routes."""
+    token = client.post(
+        "/auth/token",
+        data={"username": _SUITE_USER, "password": _SUITE_PASS},
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    ).json()["access_token"]
+    client.headers.update({"Authorization": f"Bearer {token}"})
+    return client
