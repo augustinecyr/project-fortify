@@ -1,3 +1,6 @@
+# DEPRECATED as of v0.8.0 — use docker-compose.yml at the project root instead.
+# This file is kept for reference only.
+
 services:
   postgres:
     image: postgres:15-alpine

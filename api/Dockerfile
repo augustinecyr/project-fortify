@@ -1,25 +1,23 @@
-FROM python:3.10-slim
+FROM python:3.12-slim
 
-WORKDIR /app
+WORKDIR /app/api
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
     gcc \
-    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
-COPY requirements.txt .
-
-# Install Python dependencies
+COPY api/requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
+COPY api/ .
+COPY --chown=appuser:appuser data/seeds/ /app/data/seeds/
+COPY --chown=appuser:appuser analytics/ /app/analytics/
 
-# Expose port
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+USER appuser
+
 EXPOSE 8000
 
-# Command will be overridden by docker-compose
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

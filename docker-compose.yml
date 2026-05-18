@@ -1,0 +1,90 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: fortify-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fortify}
+      POSTGRES_USER: ${POSTGRES_USER:-fortify_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fortify_pass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fortify_user} -d ${POSTGRES_DB:-fortify}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fortify-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: fortify-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fortify-network
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: fortify-api
+    entrypoint: ["/bin/sh", "/app/api/entrypoint.sh"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-fortify_user}:${POSTGRES_PASSWORD:-fortify_pass}@postgres:5432/${POSTGRES_DB:-fortify}
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      API_KEY: ${API_KEY:-dev-api-key-12345}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8501,http://frontend:8501}
+      ANOMALY_THRESHOLD: ${ANOMALY_THRESHOLD:-0.7}
+      SCORE_UPDATE_INTERVAL: ${SCORE_UPDATE_INTERVAL:-300}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - fortify-network
+
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    container_name: fortify-frontend
+    environment:
+      API_BASE_URL: http://api:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - fortify-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  fortify-network:
+    driver: bridge
