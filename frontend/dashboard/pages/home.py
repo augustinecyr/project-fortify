@@ -14,6 +14,10 @@ st.set_page_config(page_title="Project Fortify", page_icon="🛡️", layout="wi
 
 api_client = FortifyAPIClient()
 
+token = st.session_state.get("token")
+if not token:
+    st.switch_page("pages/login.py")
+
 st.markdown("""
 <style>
 /* Collapse default Streamlit top padding */
@@ -147,7 +151,7 @@ with btn_col:
 st.markdown('<hr class="header-divider">', unsafe_allow_html=True)
 
 # ---- DATA ----
-vms_summary = api_client.get_vms_summary()
+vms_summary = api_client.get_vms_summary(token=token)
 
 if vms_summary:
     vms_list = vms_summary.get("vms", [])
@@ -296,7 +300,7 @@ if vms_summary:
     # ---- AI FLEET INTELLIGENCE ----
     st.markdown('<div class="section-header">AI Fleet Intelligence</div>', unsafe_allow_html=True)
 
-    ai_data = api_client.get_ai_insights()
+    ai_data = api_client.get_ai_insights(token=token)
 
     if ai_data and not ai_data.get("is_fallback"):
         summary       = ai_data.get("fleet_summary", "—")
@@ -438,7 +442,7 @@ if vms_summary:
         width="stretch", hide_index=True, height=400,
         column_order=["vm_id", "name", "connectivity", "health_badge", "current_cpu", "health_score", "alert_count"]
     )
-    st.caption(f"Displaying {len(vms_list)} VMs — {datetime.now().strftime('%H:%M:%S')} | Project Fortify v0.6.0")
+    st.caption(f"Displaying {len(vms_list)} VMs — {datetime.now().strftime('%H:%M:%S')} | Project Fortify v0.7.0")
 
 else:
     st.markdown("""

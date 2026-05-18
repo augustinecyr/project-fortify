@@ -11,6 +11,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 from app.config import settings
 from app.db.database import Base
 from app.db.models import VirtualMachine, CPUMetric, HealthScore
+from app.models.user import User
 
 # this is the Alembic Config object
 config = context.config

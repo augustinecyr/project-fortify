@@ -176,6 +176,10 @@ REC_TYPE_LABELS = {
 # ---- INIT ----
 api_client = FortifyAPIClient()
 
+token = st.session_state.get("token")
+if not token:
+    st.switch_page("pages/login.py")
+
 title_col, btn_col = st.columns([9, 0.4])
 with title_col:
     st.markdown("""
@@ -190,7 +194,7 @@ with btn_col:
 st.markdown('<hr class="header-divider">', unsafe_allow_html=True)
 
 # ---- FETCH DATA ----
-opt_data = api_client.get_optimization_recommendations()
+opt_data = api_client.get_optimization_recommendations(token=token)
 
 if not opt_data:
     st.markdown('<div class="error-card"><strong>Unable to load data</strong>Verify the backend is running and refresh the page.</div>', unsafe_allow_html=True)
@@ -439,4 +443,4 @@ if fleet_vms:
     )
 
 st.divider()
-st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v0.6.0")
+st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v0.7.0")

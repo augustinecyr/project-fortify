@@ -256,9 +256,13 @@ def render_recommendations(recommendations: list):
 # ---- INIT ----
 api_client = FortifyAPIClient()
 
+token = st.session_state.get("token")
+if not token:
+    st.switch_page("pages/login.py")
+
 # Pre-populate from Redis cache on first load — no Groq call, no empty state flash
 if "ai_insights" not in st.session_state:
-    cached = api_client.get_ai_insights()
+    cached = api_client.get_ai_insights(token=token)
     st.session_state.ai_insights = cached if (cached and not cached.get("is_fallback")) else None
 
 # ---- HEADER ROW — title left, refresh button right (mirrors home.py) ----
@@ -470,8 +474,8 @@ else:
 # ---- TRIGGER (runs after render to avoid flash) ----
 if analyse_clicked:
     with st.spinner("Requesting fresh analysis..."):
-        api_client.clear_ai_cache()
-        result = api_client.get_ai_insights()
+        api_client.clear_ai_cache(token=token)
+        result = api_client.get_ai_insights(token=token)
     if result:
         st.session_state.ai_insights = result
         st.rerun()
@@ -479,4 +483,4 @@ if analyse_clicked:
         st.markdown('<div class="error-card"><strong>Unable to load data</strong>Verify the backend is running and refresh the page.</div>', unsafe_allow_html=True)
 
 st.divider()
-st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v0.6.0")
+st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v0.7.0")

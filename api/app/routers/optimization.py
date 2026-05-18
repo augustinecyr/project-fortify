@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.db.models import VirtualMachine
+from app.auth.dependencies import get_current_user
+from app.models.user import User
 from app.utils.redis_client import cache_get, cache_set
 
 router = APIRouter(prefix="/api/v1", tags=["optimization"])
@@ -101,7 +103,7 @@ def _build_recommendations(vms: list[VirtualMachine]) -> list[dict]:
 
 
 @router.get("/optimization/recommendations")
-async def get_optimization_recommendations(db: Session = Depends(get_db)):
+async def get_optimization_recommendations(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """
     Rule-based VM optimization recommendations for the Cost Optimization page.
 
