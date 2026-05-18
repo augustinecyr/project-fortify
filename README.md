@@ -86,6 +86,32 @@ as part of a unified solution.
 
 ---
 
+## Quick Start (Docker)
+
+Requires Docker Desktop. No Python or manual setup needed.
+
+```powershell
+# 1. Copy environment template and fill in secrets
+Copy-Item .env.example .env
+# Edit .env: set POSTGRES_PASSWORD, SECRET_KEY, GROQ_API_KEY
+
+# 2. Build and start all services
+docker compose up --build -d
+
+# 3. Verify everything is healthy
+docker compose ps
+
+# Access points:
+# Dashboard: http://localhost:8501  (login: admin / admin123)
+# API docs:  http://localhost:8000/docs
+```
+
+> The stack starts four containers: **postgres**, **redis**, **api**, and **frontend**.
+> Migrations, admin user, and VM seed data run automatically on first boot.
+> To run the smoke test: `.\scripts\smoke_test.ps1`
+
+---
+
 ## Technical Approach (High-Level)
 
 - **Application Layer**: FastAPI (Python)

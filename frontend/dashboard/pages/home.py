@@ -442,7 +442,7 @@ if vms_summary:
         width="stretch", hide_index=True, height=400,
         column_order=["vm_id", "name", "connectivity", "health_badge", "current_cpu", "health_score", "alert_count"]
     )
-    st.caption(f"Displaying {len(vms_list)} VMs — {datetime.now().strftime('%H:%M:%S')} | Project Fortify v0.7.0")
+    st.caption(f"Displaying {len(vms_list)} VMs — {datetime.now().strftime('%H:%M:%S')} | Project Fortify v0.8.0")
 
 else:
     st.markdown("""
