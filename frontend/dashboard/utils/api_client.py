@@ -1,6 +1,7 @@
 """
 API client for Fortify backend integration.
 """
+import os
 import requests
 import streamlit as st
 from typing import Optional, Dict, List
@@ -9,8 +10,8 @@ import time
 
 class FortifyAPIClient:
     """Client for interacting with Fortify API."""
-    
-    def __init__(self, base_url: str = "http://localhost:8000"):
+
+    def __init__(self, base_url: str = os.getenv("API_BASE_URL", "http://localhost:8000")):
         self.base_url = base_url
     
     def _make_request(self, endpoint: str, method: str = "GET", token: str | None = None, retries: int = 3, **kwargs) -> Optional[Dict]:

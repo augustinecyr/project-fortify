@@ -1,8 +1,11 @@
 """
 Project Fortify — Login page.
 """
+import os
 import requests
 import streamlit as st
+
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 st.set_page_config(page_title="Fortify — Login", page_icon="🛡️", layout="centered")
 
@@ -47,7 +50,7 @@ if submitted:
     else:
         try:
             r = requests.post(
-                "http://localhost:8000/auth/token",
+                f"{API_BASE_URL}/auth/token",
                 data={"username": username, "password": password},
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
                 timeout=5,

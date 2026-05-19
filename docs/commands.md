@@ -4,6 +4,58 @@ Quick reference for all development commands used in Project Fortify.
 
 ---
 
+## Docker Quick Start (v0.8.0)
+
+Runs the full stack (API + Streamlit frontend + PostgreSQL + Redis) with a single command. No local Python environment required.
+
+```powershell
+# 1. Copy environment template and fill in secrets
+Copy-Item .env.example .env
+# Edit .env: set POSTGRES_PASSWORD, SECRET_KEY, GROQ_API_KEY
+
+# 2. Build and start all four services
+docker compose up --build -d
+
+# 3. Confirm all containers are healthy
+docker compose ps
+
+# 4. Run the smoke test
+.\scripts\smoke_test.ps1
+
+# Access points:
+# Dashboard: http://localhost:8501  (login: admin / admin123)
+# API docs:  http://localhost:8000/docs
+```
+
+### Docker Container Commands
+
+```powershell
+# Tail live logs from all containers
+docker compose logs -f
+
+# Tail logs from a specific service
+docker compose logs -f api
+docker compose logs -f frontend
+
+# Rebuild a single service after code changes
+docker compose up --build -d api
+
+# Open a shell in the API container
+docker exec -it fortify-api sh
+
+# Re-run seed scripts manually (if needed)
+docker exec fortify-api python /app/data/seeds/seed_database.py
+docker exec fortify-api python /app/data/seeds/seed_users.py
+
+# Stop everything (keeps volumes/data)
+docker compose down
+
+# Stop and wipe all data (fresh start)
+docker compose down -v
+```
+
+---
+
 ## Initial Setup Commands
 
 ### Environment Setup

@@ -13,7 +13,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
-        'About': "Project Fortify - Infrastructure Health Monitoring Platform v0.7.0"
+        'About': "Project Fortify - Infrastructure Health Monitoring Platform v0.8.0"
     }
 )
 
