@@ -29,7 +29,18 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 sys.path.insert(0, str(Path(__file__).parent / "utils"))
-from session import load_token, clear_token
+from session import load_token, clear_token, COOKIE_NAME, COOKIE_TTL_DAYS
+from streamlit_cookies_controller import CookieController
+
+# CookieController must live here — top of app.py — so it is rendered on every
+# script run and survives the st.rerun() that login/logout trigger.
+# session.py stores pending operations in session_state; we act on them here.
+_cookie_ctrl = CookieController(key="fortify_ctrl")
+_pending_write = st.session_state.pop("_pending_cookie", None)
+if _pending_write:
+    _cookie_ctrl.set(COOKIE_NAME, _pending_write, max_age=COOKIE_TTL_DAYS * 86400)
+if st.session_state.pop("_pending_clear", False):
+    _cookie_ctrl.remove(COOKIE_NAME)
 
 login_page = st.Page("pages/login.py", title="Login", icon=":material/login:")
 
