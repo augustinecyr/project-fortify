@@ -2,14 +2,16 @@
 Project Fortify - Main Entry Point
 Navigation hub for the dashboard.
 """
+import os
 import streamlit as st
 import sys
 import time
 from pathlib import Path
+from streamlit_cookies_manager import EncryptedCookieManager
 
 st.set_page_config(
     page_title="Project Fortify Dashboard",
-    page_icon="🛡️",
+    page_icon="🔒",
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
@@ -19,29 +21,47 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    .stApp header [data-testid="stStatusWidget"] {
-        display: none !important;
-    }
-    .stApp header button[kind="header"] {
-        display: none !important;
-    }
+    .stApp header [data-testid="stStatusWidget"] { display: none !important; }
+    .stApp header button[kind="header"] { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
 sys.path.insert(0, str(Path(__file__).parent / "utils"))
-from session import load_token, clear_token, COOKIE_NAME, COOKIE_TTL_DAYS
-from streamlit_cookies_controller import CookieController
+from session import load_token, clear_token, save_token, COOKIE_KEY
 
-# CookieController must live here — top of app.py — so it is rendered on every
-# script run and survives the st.rerun() that login/logout trigger.
-# session.py stores pending operations in session_state; we act on them here.
-_cookie_ctrl = CookieController(key="fortify_ctrl")
-_pending_write = st.session_state.pop("_pending_cookie", None)
-if _pending_write:
-    _cookie_ctrl.set(COOKIE_NAME, _pending_write, max_age=COOKIE_TTL_DAYS * 86400)
-if st.session_state.pop("_pending_clear", False):
-    _cookie_ctrl.remove(COOKIE_NAME)
+# ---------------------------------------------------------------------------
+# Cookie manager — blocks until the browser component has initialised and sent
+# back the current cookies. st.stop() on the first render causes a brief blank
+# screen (~100 ms) before the real page appears; this is unavoidable with any
+# component-based cookie approach and is the price of reliable persistence.
+# ---------------------------------------------------------------------------
+_SECRET = os.getenv("SECRET_KEY", "fortify-dev-session-key-change-in-prod-32c")
+_cookies = EncryptedCookieManager(prefix="fortify_", password=_SECRET)
 
+if not _cookies.ready():
+    st.stop()   # wait for component → rerun with cookies available
+
+# Hydrate session_state from cookie on fresh connection (browser refresh / new tab)
+if not st.session_state.get("_logged_out") and not st.session_state.get("token"):
+    _stored = _cookies.get(COOKIE_KEY)
+    if _stored:
+        st.session_state["token"] = _stored
+
+# Write pending cookie set (queued by save_token() during login)
+_set_token = st.session_state.pop("_set_token", None)
+if _set_token:
+    _cookies[COOKIE_KEY] = _set_token
+    _cookies.save()
+
+# Clear pending cookie (queued by clear_token() during logout)
+if st.session_state.pop("_clear_token", False):
+    if COOKIE_KEY in _cookies:
+        del _cookies[COOKIE_KEY]
+        _cookies.save()
+
+# ---------------------------------------------------------------------------
+# Navigation / auth gate
+# ---------------------------------------------------------------------------
 login_page = st.Page("pages/login.py", title="Login", icon=":material/login:")
 
 if not load_token():
@@ -49,45 +69,21 @@ if not load_token():
     pg.run()
 
 elif st.session_state.pop("just_logged_in", False):
-    # Fixed overlay sits above all Streamlit chrome (header, sidebar, footer).
-    # The CSS progress bar animates in the browser while Python sleeps,
-    # giving the browser time to fully commit this as the stable render state
-    # before home.py runs. No VM data calls happen here — home.py fetches its
-    # own data and the browser holds this screen during that call.
     st.markdown("""
     <style>
     html, body, .stApp { overflow: hidden !important; }
-    @keyframes progressAnim {
-        from { width: 0%; }
-        to   { width: 100%; }
-    }
+    @keyframes progressAnim { from { width: 0%; } to { width: 100%; } }
     .loading-overlay {
-        position: fixed;
-        inset: 0;
-        z-index: 9999;
-        background: white;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 0.6rem;
+        position: fixed; inset: 0; z-index: 9999; background: white;
+        display: flex; flex-direction: column; align-items: center;
+        justify-content: center; gap: 0.6rem;
     }
     .loading-icon  { font-size: 2.5rem; line-height: 1; margin-bottom: 0.25rem; }
     .loading-title { font-size: 1.25rem; font-weight: 700; color: #0f172a; margin: 0; }
     .loading-sub   { font-size: 0.875rem; color: #64748b; margin: 0 0 0.5rem 0; }
-    .progress-track {
-        width: 220px;
-        height: 4px;
-        background: #e2e8f0;
-        border-radius: 2px;
-        overflow: hidden;
-    }
-    .progress-fill {
-        height: 100%;
-        background: #3b82f6;
-        border-radius: 2px;
-        animation: progressAnim 2.8s ease-in-out forwards;
-    }
+    .progress-track { width: 220px; height: 4px; background: #e2e8f0; border-radius: 2px; overflow: hidden; }
+    .progress-fill  { height: 100%; background: #3b82f6; border-radius: 2px;
+                      animation: progressAnim 2.8s ease-in-out forwards; }
     </style>
     <div class="loading-overlay">
         <div class="loading-icon">🛡️</div>
@@ -107,8 +103,7 @@ else:
         @keyframes _cov { 0% { opacity:1; } 100% { opacity:0; } }
         ._cover {
             position: fixed; inset: 0; z-index: 99999; background: #ffffff;
-            animation: _cov 0.6s ease-out 0.8s both;
-            pointer-events: none;
+            animation: _cov 0.6s ease-out 0.8s both; pointer-events: none;
         }
         </style>
         <div class="_cover"></div>

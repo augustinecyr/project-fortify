@@ -8,7 +8,7 @@ import streamlit as st
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "utils"))
-from session import save_token, load_token
+from session import save_token, load_token  # load_token reads session_state (hydrated by app.py)
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
