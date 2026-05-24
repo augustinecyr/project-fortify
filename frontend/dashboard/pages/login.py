@@ -12,8 +12,6 @@ from session import save_token, load_token  # load_token reads session_state (hy
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
-st.set_page_config(page_title="Project Fortify — Login", page_icon="🔒", layout="centered")
-
 # If the cookie carries a valid token, skip straight to the dashboard.
 if load_token():
     st.switch_page("app.py")
