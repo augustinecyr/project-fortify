@@ -175,9 +175,9 @@ sorted_vms = sorted(vms, key=lambda x: x['vm_id'])
 vm_display_list = [f"{vm['vm_id']} - {vm['name']}" for vm in sorted_vms]
 vm_id_by_display = {display: vm['vm_id'] for display, vm in zip(vm_display_list, sorted_vms)}
 
-# ---- READ QUERY PARAMETER (session_state takes priority for row-click nav) ----
+# ---- READ QUERY PARAMETER ----
 query_params = st.query_params
-preselected_vm = st.session_state.pop("_nav_vm", None) or query_params.get("vm", None)
+preselected_vm = query_params.get("vm", None)
 default_index = 0
 
 if preselected_vm:

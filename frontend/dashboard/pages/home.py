@@ -4,7 +4,6 @@ Project Fortify - Home Dashboard
 import streamlit as st
 import sys
 from pathlib import Path
-import pandas as pd
 from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "utils"))
@@ -379,52 +378,72 @@ if vms_summary:
 
     # ---- VM TABLE ----
     st.markdown('<div class="section-header">Virtual Machines</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-subheader">Click a row to open VM Health Monitor</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-subheader">Click a VM ID to open VM Health Monitor</div>', unsafe_allow_html=True)
 
-    df_vms = pd.DataFrame(vms_list)
+    rows_html = ""
+    for vm in vms_list:
+        vm_id   = vm.get("vm_id", "")
+        name    = vm.get("name", "")
+        status  = vm.get("status", "offline")
+        health  = vm.get("health_score") or 0
+        cpu     = vm.get("current_cpu") or 0
+        alerts  = vm.get("alert_count") or 0
 
-    def get_health_badge(health):
-        if health >= 80: return "Healthy"
-        elif health >= 60: return "Warning"
-        return "Critical"
+        s_color = "#166534" if status == "online" else "#991b1b"
+        s_bg    = "#dcfce7" if status == "online" else "#fee2e2"
+        s_label = "Online"  if status == "online" else "Offline"
 
-    df_vms["connectivity"] = df_vms["status"].apply(lambda s: "Online" if s == "online" else "Offline")
-    df_vms["health_badge"] = df_vms["health_score"].apply(get_health_badge)
-    df_display = df_vms[["vm_id", "name", "connectivity", "health_badge", "current_cpu", "health_score", "alert_count"]].copy()
-    df_display["current_cpu"]  = df_display["current_cpu"].fillna(0)
-    df_display["health_score"] = df_display["health_score"].fillna(0)
-    df_display["alert_count"]  = df_display["alert_count"].fillna(0).astype(int)
+        if health >= 80:
+            h_color, h_bg, h_label = "#166534", "#dcfce7", "Healthy"
+        elif health >= 60:
+            h_color, h_bg, h_label = "#92400e", "#fef3c7", "Warning"
+        else:
+            h_color, h_bg, h_label = "#991b1b", "#fee2e2", "Critical"
 
-    styled_df = df_display.style.map(
-        lambda v: "background-color:#dcfce7;color:#166534;font-weight:600;" if v >= 80
-                  else "background-color:#fef3c7;color:#92400e;font-weight:600;" if v >= 60
-                  else "background-color:#fee2e2;color:#991b1b;font-weight:600;",
-        subset=["health_score"]
-    )
+        rows_html += f"""
+        <tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:0.65rem 1rem;">
+                <a href="/vm_health_monitor?vm={vm_id}"
+                   style="color:#3b82f6;text-decoration:none;font-weight:600;font-family:monospace;">
+                   {vm_id}
+                </a>
+            </td>
+            <td style="padding:0.65rem 1rem;color:#0f172a;">{name}</td>
+            <td style="padding:0.65rem 1rem;">
+                <span style="background:{s_bg};color:{s_color};padding:2px 10px;border-radius:9999px;font-size:0.75rem;font-weight:600;">
+                    {s_label}
+                </span>
+            </td>
+            <td style="padding:0.65rem 1rem;">
+                <span style="background:{h_bg};color:{h_color};padding:2px 10px;border-radius:9999px;font-size:0.75rem;font-weight:600;">
+                    {h_label}
+                </span>
+            </td>
+            <td style="padding:0.65rem 1rem;color:#334155;">{cpu:.1f}%</td>
+            <td style="padding:0.65rem 1rem;font-weight:600;color:{h_color};">{health:.0f}</td>
+            <td style="padding:0.65rem 1rem;color:#334155;">{alerts}</td>
+        </tr>"""
 
-    event = st.dataframe(
-        styled_df,
-        column_config={
-            "vm_id": st.column_config.TextColumn("VM ID"),
-            "name": "Name",
-            "connectivity": "Connectivity",
-            "health_badge": "Health",
-            "current_cpu": st.column_config.ProgressColumn("CPU %", min_value=0, max_value=100, format="%.1f%%"),
-            "health_score": st.column_config.NumberColumn("Score", format="%d"),
-            "alert_count":  st.column_config.NumberColumn("Alerts", format="%d"),
-        },
-        width="stretch", hide_index=True, height=400,
-        column_order=["vm_id", "name", "connectivity", "health_badge", "current_cpu", "health_score", "alert_count"],
-        selection_mode="single-row",
-        on_select="rerun",
-    )
-    st.caption(f"Displaying {len(vms_list)} VMs · Click a row to open VM Health Monitor — {datetime.now().strftime('%H:%M:%S')} | Project Fortify v0.8.0")
-
-    selected_rows = event.selection.rows
-    if selected_rows:
-        selected_vm_id = df_display.iloc[selected_rows[0]]["vm_id"]
-        st.session_state["_nav_vm"] = selected_vm_id
-        st.switch_page("pages/vm_health_monitor.py")
+    th = "padding:0.6rem 1rem;color:#64748b;font-weight:600;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;text-align:left;background:#f8fafc;border-bottom:2px solid #e2e8f0;"
+    st.markdown(f"""
+    <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-top:0.5rem;">
+    <table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
+        <thead>
+            <tr>
+                <th style="{th}">VM ID</th>
+                <th style="{th}">Name</th>
+                <th style="{th}">Connectivity</th>
+                <th style="{th}">Health</th>
+                <th style="{th}">CPU %</th>
+                <th style="{th}">Score</th>
+                <th style="{th}">Alerts</th>
+            </tr>
+        </thead>
+        <tbody>{rows_html}</tbody>
+    </table>
+    </div>
+    """, unsafe_allow_html=True)
+    st.caption(f"Displaying {len(vms_list)} VMs — {datetime.now().strftime('%H:%M:%S')} | Project Fortify v0.8.0")
 
 else:
     st.markdown("""
