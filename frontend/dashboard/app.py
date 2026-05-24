@@ -2,12 +2,11 @@
 Project Fortify - Main Entry Point
 Navigation hub for the dashboard.
 """
-import os
 import streamlit as st
 import sys
 import time
 from pathlib import Path
-from streamlit_cookies_manager import EncryptedCookieManager
+from streamlit_cookies_manager import CookieManager
 
 st.set_page_config(
     page_title="Project Fortify Dashboard",
@@ -35,8 +34,7 @@ from session import load_token, clear_token, save_token, COOKIE_KEY
 # screen (~100 ms) before the real page appears; this is unavoidable with any
 # component-based cookie approach and is the price of reliable persistence.
 # ---------------------------------------------------------------------------
-_SECRET = os.getenv("SECRET_KEY", "fortify-dev-session-key-change-in-prod-32c")
-_cookies = EncryptedCookieManager(prefix="fortify_", password=_SECRET)
+_cookies = CookieManager(prefix="fortify_")
 
 if not _cookies.ready():
     st.stop()   # wait for component → rerun with cookies available
