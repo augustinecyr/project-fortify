@@ -2,12 +2,21 @@
 Project Fortify — Login page.
 """
 import os
+import sys
 import requests
 import streamlit as st
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "utils"))
+from session import save_token, load_token
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
-st.set_page_config(page_title="Fortify — Login", page_icon="🛡️", layout="centered")
+st.set_page_config(page_title="Project Fortify — Login", page_icon="🔒", layout="centered")
+
+# If the cookie carries a valid token, skip straight to the dashboard.
+if load_token():
+    st.switch_page("app.py")
 
 st.markdown("""
 <style>
@@ -56,8 +65,7 @@ if submitted:
                 timeout=5,
             )
             if r.status_code == 200:
-                st.session_state["token"] = r.json()["access_token"]
-                st.session_state["username"] = username
+                save_token(r.json()["access_token"], username)
                 st.session_state["just_logged_in"] = True
                 st.rerun()
             else:

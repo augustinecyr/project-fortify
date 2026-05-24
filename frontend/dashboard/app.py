@@ -29,10 +29,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 sys.path.insert(0, str(Path(__file__).parent / "utils"))
+from session import load_token, clear_token
 
 login_page = st.Page("pages/login.py", title="Login", icon=":material/login:")
 
-if not st.session_state.get("token"):
+if not load_token():
     pg = st.navigation([login_page])
     pg.run()
 
@@ -126,8 +127,7 @@ else:
         username = st.session_state.get("username", "admin")
         st.caption(f"Signed in as **{username}**")
         if st.button("Sign out", icon=":material/logout:", use_container_width=True):
-            del st.session_state["token"]
-            st.session_state.pop("username", None)
+            clear_token()
             st.rerun()
 
     pg.run()
