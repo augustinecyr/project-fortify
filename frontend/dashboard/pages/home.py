@@ -9,12 +9,13 @@ from datetime import datetime, timezone, timedelta
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "utils"))
 from api_client import FortifyAPIClient
+from session import load_token
 
-st.set_page_config(page_title="Project Fortify", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="Project Fortify — Home", page_icon="🔒", layout="wide")
 
 api_client = FortifyAPIClient()
 
-token = st.session_state.get("token")
+token = load_token()
 if not token:
     st.switch_page("pages/login.py")
 

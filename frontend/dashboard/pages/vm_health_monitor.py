@@ -143,9 +143,10 @@ def render_card(label, value, delta=None):
     """, unsafe_allow_html=True)
 
 # ---- INIT ----
+from session import load_token
 api_client = FortifyAPIClient()
 
-token = st.session_state.get("token")
+token = load_token()
 if not token:
     st.switch_page("pages/login.py")
 

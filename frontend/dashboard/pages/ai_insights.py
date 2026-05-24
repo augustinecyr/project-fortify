@@ -254,9 +254,10 @@ def render_recommendations(recommendations: list):
 
 
 # ---- INIT ----
+from session import load_token
 api_client = FortifyAPIClient()
 
-token = st.session_state.get("token")
+token = load_token()
 if not token:
     st.switch_page("pages/login.py")
 

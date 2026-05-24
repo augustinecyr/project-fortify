@@ -80,9 +80,10 @@ div[data-testid="stButton"] button:hover {
 """, unsafe_allow_html=True)
 
 # ---- INIT API ----
+from session import load_token
 api_client = FortifyAPIClient()
 
-token = st.session_state.get("token")
+token = load_token()
 if not token:
     st.switch_page("pages/login.py")
 
