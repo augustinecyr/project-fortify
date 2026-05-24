@@ -109,7 +109,7 @@ else:
 
     pages = {
         "Monitoring": [
-            st.Page("pages/home.py", title="Home", icon=":material/home:"),
+            st.Page("pages/home.py", title="Home", icon=":material/home:", url_path="home"),
             st.Page("pages/vm_health_monitor.py", title="VM Health", icon=":material/health_and_safety:"),
         ],
         "Reports": [
