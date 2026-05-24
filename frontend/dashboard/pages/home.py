@@ -379,7 +379,7 @@ if vms_summary:
 
     # ---- VM TABLE ----
     st.markdown('<div class="section-header">Virtual Machines</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-subheader">Click a VM ID to view detailed health metrics</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-subheader">Click a row to open VM Health Monitor</div>', unsafe_allow_html=True)
 
     df_vms = pd.DataFrame(vms_list)
 
@@ -394,7 +394,6 @@ if vms_summary:
     df_display["current_cpu"]  = df_display["current_cpu"].fillna(0)
     df_display["health_score"] = df_display["health_score"].fillna(0)
     df_display["alert_count"]  = df_display["alert_count"].fillna(0).astype(int)
-    df_display["vm_id"] = df_display["vm_id"].apply(lambda x: f"/vm_health_monitor?vm={x}")
 
     styled_df = df_display.style.map(
         lambda v: "background-color:#dcfce7;color:#166534;font-weight:600;" if v >= 80
@@ -403,10 +402,10 @@ if vms_summary:
         subset=["health_score"]
     )
 
-    st.dataframe(
+    event = st.dataframe(
         styled_df,
         column_config={
-            "vm_id": st.column_config.LinkColumn("VM ID", help="Click to view detailed health metrics", display_text=r"vm=([^&]+)"),
+            "vm_id": st.column_config.TextColumn("VM ID"),
             "name": "Name",
             "connectivity": "Connectivity",
             "health_badge": "Health",
@@ -415,9 +414,17 @@ if vms_summary:
             "alert_count":  st.column_config.NumberColumn("Alerts", format="%d"),
         },
         width="stretch", hide_index=True, height=400,
-        column_order=["vm_id", "name", "connectivity", "health_badge", "current_cpu", "health_score", "alert_count"]
+        column_order=["vm_id", "name", "connectivity", "health_badge", "current_cpu", "health_score", "alert_count"],
+        selection_mode="single-row",
+        on_select="rerun",
     )
-    st.caption(f"Displaying {len(vms_list)} VMs — {datetime.now().strftime('%H:%M:%S')} | Project Fortify v0.8.0")
+    st.caption(f"Displaying {len(vms_list)} VMs · Click a row to open VM Health Monitor — {datetime.now().strftime('%H:%M:%S')} | Project Fortify v0.8.0")
+
+    selected_rows = event.selection.rows
+    if selected_rows:
+        selected_vm_id = df_display.iloc[selected_rows[0]]["vm_id"]
+        st.query_params["vm"] = selected_vm_id
+        st.switch_page("pages/vm_health_monitor.py")
 
 else:
     st.markdown("""
