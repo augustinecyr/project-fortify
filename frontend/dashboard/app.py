@@ -107,6 +107,14 @@ else:
         <div class="_cover"></div>
         """, unsafe_allow_html=True)
 
+    # Intercept ?vm= query param produced when the browser follows an HTML link
+    # to /vm_health_monitor?vm=xxx — Streamlit redirects that to /?vm=xxx, so we
+    # catch it here and forward to the correct page via session_state.
+    if st.query_params.get("vm"):
+        st.session_state["_nav_vm_id"] = st.query_params["vm"]
+        st.session_state.pop("vm_selector", None)
+        st.switch_page("pages/vm_health_monitor.py")
+
     pages = {
         "Monitoring": [
             st.Page("pages/home.py", title="Home", icon=":material/home:", url_path="home"),
