@@ -5,7 +5,7 @@ import streamlit as st
 import sys
 from pathlib import Path
 import pandas as pd
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "utils"))
 from api_client import FortifyAPIClient
@@ -158,20 +158,7 @@ if vms_summary:
     vms_list = vms_summary.get("vms", [])
     total_vms = len(vms_list)
 
-    def is_vm_online(last_seen_str):
-        if not last_seen_str:
-            return False
-        try:
-            if last_seen_str.endswith('Z'):
-                last_seen_str = last_seen_str.replace('Z', '+00:00')
-            last_seen = datetime.fromisoformat(last_seen_str)
-            if last_seen.tzinfo is None:
-                last_seen = last_seen.replace(tzinfo=timezone.utc)
-            return (datetime.now(timezone.utc) - last_seen) <= timedelta(minutes=5)
-        except Exception:
-            return False
-
-    online_vms   = sum(1 for vm in vms_list if is_vm_online(vm.get("last_seen")))
+    online_vms   = sum(1 for vm in vms_list if vm.get("status") == "online")
     offline_vms  = total_vms - online_vms
     healthy_vms  = sum(1 for vm in vms_list if vm.get("health_score") and vm["health_score"] >= 80)
     warning_vms  = sum(1 for vm in vms_list if vm.get("health_score") and 60 <= vm["health_score"] < 80)
@@ -396,25 +383,12 @@ if vms_summary:
 
     df_vms = pd.DataFrame(vms_list)
 
-    def get_connectivity(last_seen_str):
-        if not last_seen_str:
-            return "Offline"
-        try:
-            if last_seen_str.endswith('Z'):
-                last_seen_str = last_seen_str.replace('Z', '+00:00')
-            last_seen = datetime.fromisoformat(last_seen_str)
-            if last_seen.tzinfo is None:
-                last_seen = last_seen.replace(tzinfo=timezone.utc)
-            return "Online" if (datetime.now(timezone.utc) - last_seen) <= timedelta(minutes=5) else "Offline"
-        except Exception:
-            return "Offline"
-
     def get_health_badge(health):
         if health >= 80: return "Healthy"
         elif health >= 60: return "Warning"
         return "Critical"
 
-    df_vms["connectivity"] = df_vms["last_seen"].apply(get_connectivity)
+    df_vms["connectivity"] = df_vms["status"].apply(lambda s: "Online" if s == "online" else "Offline")
     df_vms["health_badge"] = df_vms["health_score"].apply(get_health_badge)
     df_display = df_vms[["vm_id", "name", "connectivity", "health_badge", "current_cpu", "health_score", "alert_count"]].copy()
     df_display["current_cpu"]  = df_display["current_cpu"].fillna(0)

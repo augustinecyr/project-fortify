@@ -2,14 +2,14 @@
 VM Health Monitor - Enhanced with comprehensive VM information
 Displays health scoring, resource utilization, security metrics, and performance analytics.
 Supports ?vm=vm-XXX URL parameter for deep linking.
-Now uses last_seen for connectivity badge.
+Connectivity badge reads vm.status from the API.
 """
 
 import streamlit as st
 import pandas as pd
 import sys
 from pathlib import Path
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 
 # ---- FIX PATHS ----
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "utils"))
@@ -230,23 +230,8 @@ comp_scores = {
 
 _, health_status, _ = get_health_status_class(health_score)
 
-# ---- COMPUTE CONNECTIVITY FROM LAST_SEEN ----
-offline_threshold = timedelta(minutes=5)
-now = datetime.now(timezone.utc)
-last_seen_str = vm_details.get("last_seen")
-is_online = False
-if last_seen_str:
-    try:
-        if last_seen_str.endswith('Z'):
-            last_seen_str = last_seen_str.replace('Z', '+00:00')
-        last_seen = datetime.fromisoformat(last_seen_str)
-        if last_seen.tzinfo is None:
-            last_seen = last_seen.replace(tzinfo=timezone.utc)
-        is_online = (now - last_seen) <= offline_threshold
-    except Exception:
-        is_online = False
-
-connectivity_status = "online" if is_online else "offline"
+connectivity_status = vm_details.get("status", "offline")
+is_online = connectivity_status == "online"
 connectivity_badge_class = "status-online" if is_online else "status-offline"
 connectivity_badge_text = "ONLINE" if is_online else "OFFLINE"
 
