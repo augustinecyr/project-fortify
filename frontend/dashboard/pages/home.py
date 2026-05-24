@@ -423,7 +423,7 @@ if vms_summary:
     selected_rows = event.selection.rows
     if selected_rows:
         selected_vm_id = df_display.iloc[selected_rows[0]]["vm_id"]
-        st.query_params["vm"] = selected_vm_id
+        st.session_state["_nav_vm"] = selected_vm_id
         st.switch_page("pages/vm_health_monitor.py")
 
 else:

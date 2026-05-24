@@ -46,12 +46,11 @@ st.markdown("""
 st.markdown('<div class="login-title">🛡️ Project Fortify</div>', unsafe_allow_html=True)
 st.markdown('<div class="login-sub">Sign in to access the infrastructure dashboard.</div>', unsafe_allow_html=True)
 
-with st.form("login_form"):
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-    submitted = st.form_submit_button("Sign in", use_container_width=True)
+username = st.text_input("Username", key="login_username")
+password = st.text_input("Password", type="password", key="login_password")
+sign_in = st.button("Sign in", use_container_width=True, type="primary")
 
-if submitted:
+if sign_in:
     if not username or not password:
         st.markdown('<div class="error-card">Please enter both username and password.</div>', unsafe_allow_html=True)
     else:
