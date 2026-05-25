@@ -24,6 +24,13 @@ _handler.setFormatter(jsonlogger.JsonFormatter(
 logging.root.setLevel(logging.INFO)
 logging.root.handlers = [_handler]
 
+# Apply JSON formatter to uvicorn loggers so their access/error lines are
+# also structured JSON rather than uvicorn's default plain-text format.
+for _name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+    _uvicorn_logger = logging.getLogger(_name)
+    _uvicorn_logger.handlers = [_handler]
+    _uvicorn_logger.propagate = False
+
 app = FastAPI(
     title="Project Fortify API",
     description="AI-assisted AI-Ops solution for infrastructure monitoring",
