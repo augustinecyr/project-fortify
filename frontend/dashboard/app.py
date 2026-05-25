@@ -18,10 +18,32 @@ st.set_page_config(
     }
 )
 
+# ---- EARLIEST POSSIBLE COVER ----
+# This must be the first st.xxx() call so its delta reaches the browser before
+# anything else. During a post-login transition the previous render (login form)
+# is still in the browser DOM; this white overlay hides it immediately.
+if st.session_state.get("just_logged_in") or st.session_state.get("_cover"):
+    st.markdown("""
+    <style>
+    @keyframes _pcov { 0% { opacity:1; } 100% { opacity:0; } }
+    ._pcov {
+        position: fixed; inset: 0; z-index: 9998; background: #fff;
+        animation: _pcov 0.6s ease-out 0.8s both; pointer-events: none;
+    }
+    </style>
+    <div class="_pcov"></div>
+    """, unsafe_allow_html=True)
+
 st.markdown("""
 <style>
     .stApp header [data-testid="stStatusWidget"] { display: none !important; }
     .stApp header button[kind="header"] { display: none !important; }
+    /* Hide all Streamlit running/loading indicators globally */
+    [data-testid="stSpinner"],
+    .stSpinner,
+    [data-testid="stDecoration"] { display: none !important; }
+    /* Hide skeleton placeholder blocks that appear during reruns */
+    [data-testid="stSkeleton"] { visibility: hidden !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -37,7 +59,15 @@ from session import load_token, clear_token, save_token, COOKIE_KEY
 _cookies = CookieManager(prefix="fortify_")
 
 if not _cookies.ready():
-    st.stop()   # wait for component → rerun with cookies available
+    # Blank the viewport while the component handshake completes so neither
+    # the login form nor any skeleton placeholder is visible during the wait.
+    st.markdown("""
+    <style>
+    [data-testid="stAppViewContainer"],
+    [data-testid="stSidebar"] { visibility: hidden !important; }
+    </style>
+    """, unsafe_allow_html=True)
+    st.stop()
 
 # Hydrate session_state from cookie on fresh connection (browser refresh / new tab)
 if not st.session_state.get("_logged_out") and not st.session_state.get("token"):
@@ -76,22 +106,20 @@ elif st.session_state.pop("just_logged_in", False):
         display: flex; flex-direction: column; align-items: center;
         justify-content: center; gap: 0.6rem;
     }
-    .loading-icon  { font-size: 2.5rem; line-height: 1; margin-bottom: 0.25rem; }
-    .loading-title { font-size: 1.25rem; font-weight: 700; color: #0f172a; margin: 0; }
-    .loading-sub   { font-size: 0.875rem; color: #64748b; margin: 0 0 0.5rem 0; }
+    .loading-icon  { font-size: 2.5rem; line-height: 1; margin-bottom: 0.75rem; }
+    .loading-sub   { font-size: 0.875rem; color: #64748b; margin: 0 0 0.75rem 0; }
     .progress-track { width: 220px; height: 4px; background: #e2e8f0; border-radius: 2px; overflow: hidden; }
     .progress-fill  { height: 100%; background: #3b82f6; border-radius: 2px;
-                      animation: progressAnim 2.8s ease-in-out forwards; }
+                      animation: progressAnim 3.5s ease-in-out forwards; }
     </style>
     <div class="loading-overlay">
         <div class="loading-icon">🛡️</div>
-        <div class="loading-title">Project Fortify</div>
         <div class="loading-sub">Signing you in…</div>
         <div class="progress-track"><div class="progress-fill"></div></div>
     </div>
     """, unsafe_allow_html=True)
     st.session_state["_cover"] = True
-    time.sleep(3)
+    time.sleep(3.8)
     st.rerun()
 
 else:
@@ -106,14 +134,6 @@ else:
         </style>
         <div class="_cover"></div>
         """, unsafe_allow_html=True)
-
-    # Intercept ?vm= query param produced when the browser follows an HTML link
-    # to /vm_health_monitor?vm=xxx — Streamlit redirects that to /?vm=xxx, so we
-    # catch it here and forward to the correct page via session_state.
-    if st.query_params.get("vm"):
-        st.session_state["_nav_vm_id"] = st.query_params["vm"]
-        st.session_state.pop("vm_selector", None)
-        st.switch_page("pages/vm_health_monitor.py")
 
     pages = {
         "Monitoring": [

@@ -3,7 +3,6 @@ Security Posture - Full implementation.
 Fleet-wide security analytics: KPI cards, score distribution, patch lag, per-VM table.
 """
 import streamlit as st
-import pandas as pd
 import plotly.graph_objects as go
 import sys
 from pathlib import Path
@@ -79,6 +78,11 @@ st.markdown("""
     color: #0f172a;
     margin: 1.5rem 0 0.5rem 0;
 }
+.section-subheader {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-bottom: 1rem;
+}
 .error-card {
     background: #fee2e2;
     border-left: 4px solid #ef4444;
@@ -146,19 +150,30 @@ def tier_badge(tier):
 
 def bool_icon(val):
     if val is True:
-        return "✅"
+        return '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:9999px;font-size:0.75rem;font-weight:600;">✓ Yes</span>'
     if val is False:
-        return "❌"
-    return "—"
+        return '<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:9999px;font-size:0.75rem;font-weight:600;">✗ No</span>'
+    return '<span style="color:#94a3b8;">—</span>'
+
+
+def fmt_date(val):
+    if not val or val == "—":
+        return "—"
+    try:
+        return datetime.fromisoformat(str(val)).strftime("%Y-%m-%d")
+    except Exception:
+        return str(val)
 
 
 # ---- INIT ----
 from session import load_token
-api_client = FortifyAPIClient()
 
 token = load_token()
 if not token:
     st.switch_page("pages/login.py")
+    st.stop()
+
+api_client = FortifyAPIClient()
 
 title_col, btn_col = st.columns([9, 0.4])
 with title_col:
@@ -311,73 +326,70 @@ st.divider()
 
 # ---- PER-VM SECURITY TABLE ----
 st.markdown('<div class="section-header">VM Security Details</div>', unsafe_allow_html=True)
-st.caption("Sorted by security score — lowest first. Click VM ID to view full health details.")
+st.markdown('<div class="section-subheader">Sorted by security score — lowest first</div>', unsafe_allow_html=True)
 
 if vms:
-    rows = []
+    rows_html = ""
     for vm in vms:  # already sorted worst-first by API
-        rows.append({
-            "vm_id": f"/vm_health_monitor?vm={vm['vm_id']}",
-            "name": vm.get("name", "—"),
-            "security_score": vm.get("security_score") or 0,
-            "open_vulns": vm.get("open_vulnerabilities", 0),
-            "critical_vulns": vm.get("critical_vulnerabilities", 0),
-            "firewall": vm.get("firewall_enabled"),
-            "ssh_key": vm.get("ssh_key_auth"),
-            "encryption": vm.get("disk_encryption"),
-            "compliance": vm.get("compliance_score") or "—",
-            "last_patch": vm.get("last_patch_date", "—"),
-            "days_since_patch": vm.get("days_since_patch"),
-        })
+        vm_id      = vm.get("vm_id", "—")
+        name       = vm.get("name", "—")
+        sec        = vm.get("security_score") or 0
+        open_vulns = vm.get("open_vulnerabilities", 0)
+        crit_vulns = vm.get("critical_vulnerabilities", 0)
+        compliance = vm.get("compliance_score") or "—"
+        last_patch = fmt_date(vm.get("last_patch_date", "—"))
+        days_patch = vm.get("days_since_patch")
+        days_str   = f"{days_patch}d" if days_patch is not None else "—"
 
-    df = pd.DataFrame(rows)
+        if sec >= 80:
+            sc_color, sc_bg = "#166534", "#dcfce7"
+        elif sec >= 60:
+            sc_color, sc_bg = "#92400e", "#fef3c7"
+        else:
+            sc_color, sc_bg = "#991b1b", "#fee2e2"
 
-    # Format last_patch to date only
-    def fmt_date(val):
-        if not val or val == "—":
-            return "—"
-        try:
-            return pd.to_datetime(val).strftime("%Y-%m-%d")
-        except Exception:
-            return str(val)
+        cv_color = "#991b1b" if crit_vulns > 0 else "#334155"
 
-    df["last_patch"] = df["last_patch"].apply(fmt_date)
+        rows_html += f"""
+        <tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:0.65rem 1rem;font-weight:600;font-family:monospace;color:#0f172a;">{vm_id}</td>
+            <td style="padding:0.65rem 1rem;color:#0f172a;">{name}</td>
+            <td style="padding:0.65rem 1rem;">
+                <span style="background:{sc_bg};color:{sc_color};padding:2px 10px;border-radius:9999px;font-size:0.75rem;font-weight:600;">{sec}</span>
+            </td>
+            <td style="padding:0.65rem 1rem;color:#334155;">{open_vulns}</td>
+            <td style="padding:0.65rem 1rem;font-weight:600;color:{cv_color};">{crit_vulns}</td>
+            <td style="padding:0.65rem 1rem;">{bool_icon(vm.get("firewall_enabled"))}</td>
+            <td style="padding:0.65rem 1rem;">{bool_icon(vm.get("ssh_key_auth"))}</td>
+            <td style="padding:0.65rem 1rem;">{bool_icon(vm.get("disk_encryption"))}</td>
+            <td style="padding:0.65rem 1rem;color:#334155;">{compliance}</td>
+            <td style="padding:0.65rem 1rem;color:#334155;">{last_patch}</td>
+            <td style="padding:0.65rem 1rem;color:#334155;">{days_str}</td>
+        </tr>"""
 
-    # Style the security_score column
-    def style_score(val):
-        if val >= 80:
-            return "background-color:#dcfce7;color:#166534;font-weight:600;"
-        elif val >= 60:
-            return "background-color:#fef3c7;color:#92400e;font-weight:600;"
-        return "background-color:#fee2e2;color:#991b1b;font-weight:600;"
-
-    styled_df = df.style.map(style_score, subset=["security_score"])
-
-    st.dataframe(
-        styled_df,
-        column_config={
-            "vm_id": st.column_config.LinkColumn(
-                "VM ID",
-                help="Click to view full VM health details",
-                display_text=r"vm=([^&]+)"
-            ),
-            "name": "Name",
-            "security_score": st.column_config.NumberColumn("Security Score", format="%d"),
-            "open_vulns": st.column_config.NumberColumn("Open Vulns", format="%d"),
-            "critical_vulns": st.column_config.NumberColumn("Critical Vulns", format="%d"),
-            "firewall": st.column_config.CheckboxColumn("Firewall"),
-            "ssh_key": st.column_config.CheckboxColumn("SSH Key Auth"),
-            "encryption": st.column_config.CheckboxColumn("Disk Encryption"),
-            "compliance": "Compliance",
-            "last_patch": "Last Patch",
-            "days_since_patch": st.column_config.NumberColumn("Days Since Patch", format="%d days"),
-        },
-        hide_index=True,
-        width='stretch',
-        height=450,
-        column_order=["vm_id", "name", "security_score", "open_vulns", "critical_vulns",
-                      "firewall", "ssh_key", "encryption", "compliance", "last_patch", "days_since_patch"]
-    )
+    th = "padding:0.6rem 1rem;color:#64748b;font-weight:600;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;text-align:left;background:#f8fafc;border-bottom:2px solid #e2e8f0;"
+    st.markdown(f"""
+    <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;overflow-x:auto;margin-top:0.5rem;">
+    <table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
+        <thead>
+            <tr>
+                <th style="{th}">VM ID</th>
+                <th style="{th}">Name</th>
+                <th style="{th}">Score</th>
+                <th style="{th}">Open Vulns</th>
+                <th style="{th}">Critical</th>
+                <th style="{th}">Firewall</th>
+                <th style="{th}">SSH Key</th>
+                <th style="{th}">Encryption</th>
+                <th style="{th}">Compliance</th>
+                <th style="{th}">Last Patch</th>
+                <th style="{th}">Days</th>
+            </tr>
+        </thead>
+        <tbody>{rows_html}</tbody>
+    </table>
+    </div>
+    """, unsafe_allow_html=True)
 else:
     st.info("No VM security data available.")
 

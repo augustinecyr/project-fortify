@@ -81,11 +81,13 @@ div[data-testid="stButton"] button:hover {
 
 # ---- INIT API ----
 from session import load_token
-api_client = FortifyAPIClient()
 
 token = load_token()
 if not token:
     st.switch_page("pages/login.py")
+    st.stop()
+
+api_client = FortifyAPIClient()
 
 title_col, btn_col = st.columns([9, 0.4])
 with title_col:

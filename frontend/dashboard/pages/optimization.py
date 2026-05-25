@@ -3,7 +3,6 @@ Cost Optimization - Full implementation.
 Resource utilization analysis and rule-based VM optimization recommendations.
 """
 import streamlit as st
-import pandas as pd
 import plotly.graph_objects as go
 import sys
 from pathlib import Path
@@ -78,6 +77,11 @@ st.markdown("""
     font-weight: 600;
     color: #0f172a;
     margin: 1.5rem 0 0.5rem 0;
+}
+.section-subheader {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-bottom: 1rem;
 }
 .alert-box {
     padding: 0.875rem 1rem;
@@ -175,11 +179,13 @@ REC_TYPE_LABELS = {
 
 # ---- INIT ----
 from session import load_token
-api_client = FortifyAPIClient()
 
 token = load_token()
 if not token:
     st.switch_page("pages/login.py")
+    st.stop()
+
+api_client = FortifyAPIClient()
 
 title_col, btn_col = st.columns([9, 0.4])
 with title_col:
@@ -374,74 +380,87 @@ st.divider()
 
 # ---- VM UTILIZATION TABLE ----
 st.markdown('<div class="section-header">VM Utilization Breakdown</div>', unsafe_allow_html=True)
-st.caption("Full resource snapshot per VM — click VM ID to view detailed health metrics")
+st.markdown('<div class="section-subheader">Full resource snapshot per VM</div>', unsafe_allow_html=True)
 
 if fleet_vms:
-    rows = []
+    rows_html = ""
     for vm in fleet_vms:
-        cpu  = vm.get("current_cpu")
-        mem  = vm.get("current_memory")
-        disk = vm.get("current_disk")
+        vm_id  = vm.get("vm_id", "—")
+        name   = vm.get("name", "—")
+        status = vm.get("status", "offline")
+        cpu    = vm.get("current_cpu")
+        mem    = vm.get("current_memory")
+        disk   = vm.get("current_disk")
         zone, _ = efficiency_zone(cpu, mem)
 
-        # Find matching recommendation type for this VM
         rec_types = [
             REC_TYPE_LABELS.get(r["recommendation_type"], r["recommendation_type"])
-            for r in recommendations if r["vm_id"] == vm["vm_id"]
+            for r in recommendations if r["vm_id"] == vm_id
         ]
         rec_label = ", ".join(rec_types) if rec_types else "—"
 
-        rows.append({
-            "vm_id":      f"/vm_health_monitor?vm={vm['vm_id']}",
-            "name":       vm.get("name", "—"),
-            "status":     vm.get("status", "—"),
-            "cpu":        round(cpu, 1) if cpu is not None else None,
-            "memory":     round(mem, 1) if mem is not None else None,
-            "disk":       round(disk, 1) if disk is not None else None,
-            "zone":       zone,
-            "action":     rec_label,
-        })
+        s_color = "#166534" if status == "online" else "#991b1b"
+        s_bg    = "#dcfce7" if status == "online" else "#fee2e2"
+        s_label = "Online"  if status == "online" else "Offline"
 
-    df = pd.DataFrame(rows)
+        cpu_val = round(cpu, 1) if cpu is not None else None
+        if cpu_val is None:
+            cpu_str, cpu_color = "—", "#94a3b8"
+        elif cpu_val > 85:
+            cpu_str, cpu_color = f"{cpu_val}%", "#991b1b"
+        elif cpu_val < 20:
+            cpu_str, cpu_color = f"{cpu_val}%", "#1d4ed8"
+        else:
+            cpu_str, cpu_color = f"{cpu_val}%", "#166534"
 
-    def style_cpu(val):
-        if val is None:
-            return ""
-        if val > 85:
-            return "background-color:#fee2e2;color:#991b1b;font-weight:600;"
-        if val < 20:
-            return "background-color:#dbeafe;color:#1d4ed8;font-weight:600;"
-        return "background-color:#dcfce7;color:#166534;font-weight:600;"
+        mem_str  = f"{round(mem,  1)}%" if mem  is not None else "—"
+        disk_str = f"{round(disk, 1)}%" if disk is not None else "—"
 
-    styled_df = df.style.map(style_cpu, subset=["cpu"])
+        if zone == "Overloaded":
+            z_color, z_bg = "#991b1b", "#fee2e2"
+        elif zone == "Wasteful":
+            z_color, z_bg = "#1d4ed8", "#dbeafe"
+        elif zone == "Optimal":
+            z_color, z_bg = "#166534", "#dcfce7"
+        else:
+            z_color, z_bg = "#475569", "#f1f5f9"
 
-    st.dataframe(
-        styled_df,
-        column_config={
-            "vm_id": st.column_config.LinkColumn(
-                "VM ID",
-                help="Click to view detailed health metrics",
-                display_text=r"vm=([^&]+)"
-            ),
-            "name":   "Name",
-            "status": "Status",
-            "cpu":    st.column_config.ProgressColumn(
-                "CPU %", min_value=0, max_value=100, format="%.1f%%"
-            ),
-            "memory": st.column_config.ProgressColumn(
-                "Memory %", min_value=0, max_value=100, format="%.1f%%"
-            ),
-            "disk":   st.column_config.ProgressColumn(
-                "Disk %", min_value=0, max_value=100, format="%.1f%%"
-            ),
-            "zone":   "Efficiency Zone",
-            "action": "Recommended Action",
-        },
-        hide_index=True,
-        width="stretch",
-        height=450,
-        column_order=["vm_id", "name", "status", "cpu", "memory", "disk", "zone", "action"]
-    )
+        rows_html += f"""
+        <tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:0.65rem 1rem;font-weight:600;font-family:monospace;color:#0f172a;">{vm_id}</td>
+            <td style="padding:0.65rem 1rem;color:#0f172a;">{name}</td>
+            <td style="padding:0.65rem 1rem;">
+                <span style="background:{s_bg};color:{s_color};padding:2px 10px;border-radius:9999px;font-size:0.75rem;font-weight:600;">{s_label}</span>
+            </td>
+            <td style="padding:0.65rem 1rem;font-weight:600;color:{cpu_color};">{cpu_str}</td>
+            <td style="padding:0.65rem 1rem;color:#334155;">{mem_str}</td>
+            <td style="padding:0.65rem 1rem;color:#334155;">{disk_str}</td>
+            <td style="padding:0.65rem 1rem;">
+                <span style="background:{z_bg};color:{z_color};padding:2px 10px;border-radius:9999px;font-size:0.75rem;font-weight:600;">{zone}</span>
+            </td>
+            <td style="padding:0.65rem 1rem;color:#334155;font-size:0.8rem;">{rec_label}</td>
+        </tr>"""
+
+    th = "padding:0.6rem 1rem;color:#64748b;font-weight:600;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;text-align:left;background:#f8fafc;border-bottom:2px solid #e2e8f0;"
+    st.markdown(f"""
+    <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-top:0.5rem;">
+    <table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
+        <thead>
+            <tr>
+                <th style="{th}">VM ID</th>
+                <th style="{th}">Name</th>
+                <th style="{th}">Status</th>
+                <th style="{th}">CPU %</th>
+                <th style="{th}">Memory %</th>
+                <th style="{th}">Disk %</th>
+                <th style="{th}">Zone</th>
+                <th style="{th}">Action</th>
+            </tr>
+        </thead>
+        <tbody>{rows_html}</tbody>
+    </table>
+    </div>
+    """, unsafe_allow_html=True)
 
 st.divider()
 st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v0.8.0")

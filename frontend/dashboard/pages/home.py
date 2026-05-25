@@ -12,11 +12,23 @@ from session import load_token
 
 st.set_page_config(page_title="Project Fortify — Home", page_icon="🔒", layout="wide")
 
-api_client = FortifyAPIClient()
-
 token = load_token()
 if not token:
     st.switch_page("pages/login.py")
+    st.stop()
+
+api_client = FortifyAPIClient()
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _fetch_vms_summary(token):
+    return FortifyAPIClient().get_vms_summary(token=token)
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _fetch_ai_insights(token):
+    return FortifyAPIClient().get_ai_insights(token=token)
+
 
 st.markdown("""
 <style>
@@ -151,7 +163,7 @@ with btn_col:
 st.markdown('<hr class="header-divider">', unsafe_allow_html=True)
 
 # ---- DATA ----
-vms_summary = api_client.get_vms_summary(token=token)
+vms_summary = _fetch_vms_summary(token)
 
 if vms_summary:
     vms_list = vms_summary.get("vms", [])
@@ -287,7 +299,7 @@ if vms_summary:
     # ---- AI FLEET INTELLIGENCE ----
     st.markdown('<div class="section-header">AI Fleet Intelligence</div>', unsafe_allow_html=True)
 
-    ai_data = api_client.get_ai_insights(token=token)
+    ai_data = _fetch_ai_insights(token)
 
     if ai_data and not ai_data.get("is_fallback"):
         summary       = ai_data.get("fleet_summary", "—")
@@ -378,7 +390,7 @@ if vms_summary:
 
     # ---- VM TABLE ----
     st.markdown('<div class="section-header">Virtual Machines</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-subheader">Click a VM ID to open VM Health Monitor</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-subheader">Overview of all virtual machines in the fleet</div>', unsafe_allow_html=True)
 
     rows_html = ""
     for vm in vms_list:
@@ -402,12 +414,7 @@ if vms_summary:
 
         rows_html += f"""
         <tr style="border-bottom:1px solid #f1f5f9;">
-            <td style="padding:0.65rem 1rem;">
-                <a href="/vm_health_monitor?vm={vm_id}"
-                   style="color:#3b82f6;text-decoration:none;font-weight:600;font-family:monospace;">
-                   {vm_id}
-                </a>
-            </td>
+            <td style="padding:0.65rem 1rem;font-weight:600;font-family:monospace;color:#0f172a;">{vm_id}</td>
             <td style="padding:0.65rem 1rem;color:#0f172a;">{name}</td>
             <td style="padding:0.65rem 1rem;">
                 <span style="background:{s_bg};color:{s_color};padding:2px 10px;border-radius:9999px;font-size:0.75rem;font-weight:600;">

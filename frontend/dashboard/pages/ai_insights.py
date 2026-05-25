@@ -255,11 +255,13 @@ def render_recommendations(recommendations: list):
 
 # ---- INIT ----
 from session import load_token
-api_client = FortifyAPIClient()
 
 token = load_token()
 if not token:
     st.switch_page("pages/login.py")
+    st.stop()
+
+api_client = FortifyAPIClient()
 
 # Pre-populate from Redis cache on first load — no Groq call, no empty state flash
 if "ai_insights" not in st.session_state:

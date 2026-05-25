@@ -38,7 +38,7 @@ services:
       context: .
       dockerfile: api/Dockerfile
     container_name: fortify-api
-    entrypoint: ["/bin/sh", "/app/api/entrypoint.sh"]
+    entrypoint: ["/bin/bash", "/app/api/entrypoint.sh"]
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-fortify_user}:${POSTGRES_PASSWORD:-fortify_pass}@postgres:5432/${POSTGRES_DB:-fortify}
       REDIS_URL: redis://redis:6379/0
