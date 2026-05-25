@@ -1,16 +1,28 @@
 """
 FastAPI main application entry point for Project Fortify.
 """
+import logging
 import os
 import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from pythonjsonlogger import jsonlogger
 from starlette.middleware.base import BaseHTTPMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.limiter import limiter
 from app.routers import health, metrics, vms, security, optimization, ai, auth
 from app.audit import log_request
+
+# Configure root logger to emit structured JSON so all uvicorn and app log
+# lines are parseable by log aggregators without regex.
+_handler = logging.StreamHandler()
+_handler.setFormatter(jsonlogger.JsonFormatter(
+    fmt="%(asctime)s %(levelname)s %(name)s %(message)s",
+    rename_fields={"asctime": "timestamp", "levelname": "level", "name": "logger"},
+))
+logging.root.setLevel(logging.INFO)
+logging.root.handlers = [_handler]
 
 app = FastAPI(
     title="Project Fortify API",
