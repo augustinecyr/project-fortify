@@ -1,9 +1,15 @@
 import json
 import logging
-import time
+import sys
 from datetime import datetime, timezone
 
 audit_logger = logging.getLogger("fortify.audit")
+audit_logger.setLevel(logging.INFO)
+if not audit_logger.handlers:
+    _handler = logging.StreamHandler(sys.stdout)
+    _handler.setLevel(logging.INFO)
+    audit_logger.addHandler(_handler)
+audit_logger.propagate = False
 
 
 def log_auth_event(event: str, username: str, success: bool, ip: str = "") -> None:
