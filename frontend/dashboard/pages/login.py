@@ -34,7 +34,7 @@ header, [data-testid="stSidebar"],
 
 /* ── Push block-container into the right half, vertically centred ── */
 .block-container {
-    padding: calc(50vh - 155px) 5vw 0 calc(50vw + 5vw) !important;
+    padding: calc(50vh - 165px) 5vw 0 calc(50vw + 5vw) !important;
     margin: 0 !important;
     max-width: 100vw !important;
     height: 100vh !important;
@@ -50,36 +50,68 @@ header, [data-testid="stSidebar"],
 [data-testid="column"] { padding: 0 !important; }
 
 [data-testid="InputInstructions"] { display: none !important; }
+
+/* ── Spinner positioning ── */
+[data-testid="stSpinner"] {
+    padding: 0.5rem 0 !important;
+    font-size: 0.8rem !important;
+    color: #64748b !important;
+}
 </style>
 
 <!-- Fixed left panel — outside Streamlit's layout engine -->
 <div style="
     position: fixed; top: 0; left: 0;
     width: 50%; height: 100vh;
-    background: #f1f5f9;
+    background: linear-gradient(160deg, #0f172a 0%, #1e3a5f 55%, #1e40af 100%);
     display: flex; align-items: center; justify-content: center;
     z-index: 0;
 ">
-    <div style="text-align:center; color:#cbd5e1; user-select:none;">
-        <div style="font-size:2.5rem; margin-bottom:0.5rem;">🖼️</div>
-        <div style="font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase;">
-            Wallpaper placeholder
+    <div style="text-align:center; color: white; padding: 2rem; user-select:none;">
+        <div style="font-size:5rem; margin-bottom:1.25rem;
+                    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4));">🛡️</div>
+        <div style="font-size:1.75rem; font-weight:800; letter-spacing:-0.5px;
+                    margin-bottom:0.5rem;">Project Fortify</div>
+        <div style="font-size:0.875rem; color:rgba(255,255,255,0.6);
+                    max-width:260px; line-height:1.65; margin: 0 auto;">
+            AI-powered infrastructure security monitoring &amp; analytics platform
+        </div>
+        <div style="margin-top:2.25rem; display:flex; gap:0.5rem;
+                    justify-content:center; flex-wrap:wrap;">
+            <span style="background:rgba(255,255,255,0.1);
+                         border:1px solid rgba(255,255,255,0.2);
+                         border-radius:9999px; padding:0.25rem 0.75rem;
+                         font-size:0.7rem; color:rgba(255,255,255,0.8);">
+                Real-time Monitoring
+            </span>
+            <span style="background:rgba(255,255,255,0.1);
+                         border:1px solid rgba(255,255,255,0.2);
+                         border-radius:9999px; padding:0.25rem 0.75rem;
+                         font-size:0.7rem; color:rgba(255,255,255,0.8);">
+                AI Insights
+            </span>
+            <span style="background:rgba(255,255,255,0.1);
+                         border:1px solid rgba(255,255,255,0.2);
+                         border-radius:9999px; padding:0.25rem 0.75rem;
+                         font-size:0.7rem; color:rgba(255,255,255,0.8);">
+                Security Analytics
+            </span>
         </div>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# ── Error slot — always rendered at fixed height so the form never shifts ────
+# ── Error slot — fixed-height wrapper so the form never shifts ────────────────
 _error = st.session_state.pop("_login_error", "")
-if _error:
-    st.markdown(
-        f'<div style="background:#fee2e2;border-left:4px solid #dc2626;border-radius:.5rem;'
-        f'padding:.75rem 1rem;color:#991b1b;font-size:.825rem;margin-bottom:.75rem;">'
-        f'{_error}</div>',
-        unsafe_allow_html=True,
-    )
-else:
-    st.markdown("<div style='height:3.5rem;'></div>", unsafe_allow_html=True)
+_error_inner = (
+    f'<div style="background:#fee2e2;border-left:4px solid #dc2626;'
+    f'border-radius:.5rem;padding:.6rem 1rem;color:#991b1b;font-size:.8rem;">'
+    f'{_error}</div>'
+) if _error else ""
+st.markdown(
+    f'<div style="min-height:3rem;margin-bottom:0.5rem;box-sizing:border-box;">{_error_inner}</div>',
+    unsafe_allow_html=True,
+)
 
 # ── Brand ─────────────────────────────────────────────────────────────────────
 st.markdown("""
@@ -94,34 +126,52 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ── Inputs ────────────────────────────────────────────────────────────────────
-username = st.text_input("Username", key="login_username")
-password = st.text_input("Password", type="password", key="login_password")
+_logging_in = st.session_state.get("_logging_in", False)
+
+username = st.text_input("Username", key="login_username", disabled=_logging_in)
+password = st.text_input("Password", type="password", key="login_password", disabled=_logging_in)
 st.markdown("<div style='height:0.15rem;'></div>", unsafe_allow_html=True)
-sign_in  = st.button("Sign in", use_container_width=True, type="primary")
+sign_in = st.button(
+    "Signing in…" if _logging_in else "Sign in",
+    use_container_width=True,
+    type="primary",
+    disabled=_logging_in,
+)
 
 # ── Auth logic ────────────────────────────────────────────────────────────────
-if sign_in:
+if sign_in and not _logging_in:
     if not username or not password:
         st.session_state["_login_error"] = "Please enter both username and password."
         st.rerun()
     else:
+        st.session_state["_logging_in"] = True
+        st.rerun()
+
+if _logging_in:
+    _u = st.session_state.get("login_username", "")
+    _p = st.session_state.get("login_password", "")
+    with st.spinner("Signing in…"):
         try:
             r = requests.post(
                 f"{API_BASE_URL}/auth/token",
-                data={"username": username, "password": password},
+                data={"username": _u, "password": _p},
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
                 timeout=5,
             )
             if r.status_code == 200:
-                save_token(r.json()["access_token"], username)
+                save_token(r.json()["access_token"], _u)
                 st.session_state["just_logged_in"] = True
+                st.session_state.pop("_logging_in", None)
                 st.rerun()
             else:
                 st.session_state["_login_error"] = "Invalid username or password."
+                st.session_state.pop("_logging_in", None)
                 st.rerun()
         except requests.exceptions.ConnectionError:
             st.session_state["_login_error"] = "Cannot reach the API. Ensure the backend is running."
+            st.session_state.pop("_logging_in", None)
             st.rerun()
         except Exception as e:
             st.session_state["_login_error"] = f"Unexpected error: {e}"
+            st.session_state.pop("_logging_in", None)
             st.rerun()
