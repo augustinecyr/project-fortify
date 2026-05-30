@@ -2,7 +2,7 @@
 AI Insights — Groq LLM-powered fleet intelligence.
 On-demand analysis with fleet summary, anomalies, recommendations, and predictions.
 
-Place at: frontend/dashboard/pages/ai_insights.py
+Place at: frontend/dashboard/views/ai_insights.py
 """
 import streamlit as st
 import sys
@@ -257,9 +257,6 @@ def render_recommendations(recommendations: list):
 from session import load_token
 
 token = load_token()
-if not token:
-    st.switch_page("pages/login.py")
-    st.stop()
 
 api_client = FortifyAPIClient()
 
@@ -486,4 +483,4 @@ if analyse_clicked:
         st.markdown('<div class="error-card"><strong>Unable to load data</strong>Verify the backend is running and refresh the page.</div>', unsafe_allow_html=True)
 
 st.divider()
-st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v0.8.0")
+st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v1.0.0")

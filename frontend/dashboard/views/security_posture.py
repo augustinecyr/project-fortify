@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "components"))
 # ---- IMPORTS ----
 try:
     from api_client import FortifyAPIClient
+    from helpers import paginated_table
 except ImportError as e:
     st.markdown(f'<div class="error-card"><strong>Unable to load data</strong>Verify the backend is running and refresh the page.</div>', unsafe_allow_html=True)
     st.stop()
@@ -169,9 +170,6 @@ def fmt_date(val):
 from session import load_token
 
 token = load_token()
-if not token:
-    st.switch_page("pages/login.py")
-    st.stop()
 
 api_client = FortifyAPIClient()
 
@@ -329,7 +327,7 @@ st.markdown('<div class="section-header">VM Security Details</div>', unsafe_allo
 st.markdown('<div class="section-subheader">Sorted by security score — lowest first</div>', unsafe_allow_html=True)
 
 if vms:
-    rows_html = ""
+    rows = []
     for vm in vms:  # already sorted worst-first by API
         vm_id      = vm.get("vm_id", "—")
         name       = vm.get("name", "—")
@@ -350,7 +348,7 @@ if vms:
 
         cv_color = "#991b1b" if crit_vulns > 0 else "#334155"
 
-        rows_html += f"""
+        rows.append(f"""
         <tr style="border-bottom:1px solid #f1f5f9;">
             <td style="padding:0.65rem 1rem;font-weight:600;font-family:monospace;color:#0f172a;">{vm_id}</td>
             <td style="padding:0.65rem 1rem;color:#0f172a;">{name}</td>
@@ -365,12 +363,10 @@ if vms:
             <td style="padding:0.65rem 1rem;color:#334155;">{compliance}</td>
             <td style="padding:0.65rem 1rem;color:#334155;">{last_patch}</td>
             <td style="padding:0.65rem 1rem;color:#334155;">{days_str}</td>
-        </tr>"""
+        </tr>""")
 
     th = "padding:0.6rem 1rem;color:#64748b;font-weight:600;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;text-align:left;background:#f8fafc;border-bottom:2px solid #e2e8f0;"
-    st.markdown(f"""
-    <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;overflow-x:auto;margin-top:0.5rem;">
-    <table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
+    thead_html = f"""
         <thead>
             <tr>
                 <th style="{th}">VM ID</th>
@@ -385,13 +381,10 @@ if vms:
                 <th style="{th}">Last Patch</th>
                 <th style="{th}">Days</th>
             </tr>
-        </thead>
-        <tbody>{rows_html}</tbody>
-    </table>
-    </div>
-    """, unsafe_allow_html=True)
+        </thead>"""
+    paginated_table(rows, thead_html, key="security_vms", page_size=10)
 else:
     st.info("No VM security data available.")
 
 st.divider()
-st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v0.8.0")
+st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v1.0.0")

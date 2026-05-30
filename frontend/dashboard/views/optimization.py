@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "components"))
 # ---- IMPORTS ----
 try:
     from api_client import FortifyAPIClient
+    from helpers import paginated_table
 except ImportError as e:
     st.markdown('<div class="error-card"><strong>Unable to load data</strong>Verify the backend is running and refresh the page.</div>', unsafe_allow_html=True)
     st.stop()
@@ -181,9 +182,6 @@ REC_TYPE_LABELS = {
 from session import load_token
 
 token = load_token()
-if not token:
-    st.switch_page("pages/login.py")
-    st.stop()
 
 api_client = FortifyAPIClient()
 
@@ -383,7 +381,7 @@ st.markdown('<div class="section-header">VM Utilization Breakdown</div>', unsafe
 st.markdown('<div class="section-subheader">Full resource snapshot per VM</div>', unsafe_allow_html=True)
 
 if fleet_vms:
-    rows_html = ""
+    rows = []
     for vm in fleet_vms:
         vm_id  = vm.get("vm_id", "—")
         name   = vm.get("name", "—")
@@ -425,7 +423,7 @@ if fleet_vms:
         else:
             z_color, z_bg = "#475569", "#f1f5f9"
 
-        rows_html += f"""
+        rows.append(f"""
         <tr style="border-bottom:1px solid #f1f5f9;">
             <td style="padding:0.65rem 1rem;font-weight:600;font-family:monospace;color:#0f172a;">{vm_id}</td>
             <td style="padding:0.65rem 1rem;color:#0f172a;">{name}</td>
@@ -439,12 +437,10 @@ if fleet_vms:
                 <span style="background:{z_bg};color:{z_color};padding:2px 10px;border-radius:9999px;font-size:0.75rem;font-weight:600;">{zone}</span>
             </td>
             <td style="padding:0.65rem 1rem;color:#334155;font-size:0.8rem;">{rec_label}</td>
-        </tr>"""
+        </tr>""")
 
     th = "padding:0.6rem 1rem;color:#64748b;font-weight:600;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;text-align:left;background:#f8fafc;border-bottom:2px solid #e2e8f0;"
-    st.markdown(f"""
-    <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-top:0.5rem;">
-    <table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
+    thead_html = f"""
         <thead>
             <tr>
                 <th style="{th}">VM ID</th>
@@ -456,11 +452,8 @@ if fleet_vms:
                 <th style="{th}">Zone</th>
                 <th style="{th}">Action</th>
             </tr>
-        </thead>
-        <tbody>{rows_html}</tbody>
-    </table>
-    </div>
-    """, unsafe_allow_html=True)
+        </thead>"""
+    paginated_table(rows, thead_html, key="optimization_vms", page_size=10)
 
 st.divider()
-st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v0.8.0")
+st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v1.0.0")

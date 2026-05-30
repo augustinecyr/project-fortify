@@ -3,33 +3,19 @@ Project Fortify - Home Dashboard
 """
 import streamlit as st
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "utils"))
 from api_client import FortifyAPIClient
 from session import load_token
+from helpers import paginated_table
 
 st.set_page_config(page_title="Project Fortify — Home", page_icon="🔒", layout="wide")
 
-token = load_token()
-if not token:
-    st.switch_page("pages/login.py")
-    st.stop()
-
-api_client = FortifyAPIClient()
-
-
-@st.cache_data(ttl=60, show_spinner=False)
-def _fetch_vms_summary(token):
-    return FortifyAPIClient().get_vms_summary(token=token)
-
-
-@st.cache_data(ttl=60, show_spinner=False)
-def _fetch_ai_insights(token):
-    return FortifyAPIClient().get_ai_insights(token=token)
-
-
+# Emit page styling first — before the blocking data fetch below — so the page
+# paints fully styled on the first frame instead of flashing default chrome.
 st.markdown("""
 <style>
 /* Collapse default Streamlit top padding */
@@ -142,6 +128,29 @@ div[data-testid="stButton"] button:hover {
 }
 </style>
 """, unsafe_allow_html=True)
+
+token = load_token()
+api_client = FortifyAPIClient()
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _fetch_vms_summary(token):
+    return FortifyAPIClient().get_vms_summary(token=token)
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _fetch_ai_insights(token):
+    return FortifyAPIClient().get_ai_insights(token=token)
+
+
+# Kick off both API calls in parallel so neither blocks the other.
+# vms_summary drives the entire page; ai_insights only feeds the bottom section.
+# On a cache miss both complete in ~max(t_vms, t_ai) instead of t_vms + t_ai.
+with ThreadPoolExecutor(max_workers=2) as _pool:
+    _vms_f = _pool.submit(_fetch_vms_summary, token)
+    _ai_f  = _pool.submit(_fetch_ai_insights, token)
+    vms_summary = _vms_f.result()
+    ai_data     = _ai_f.result()
 
 # ---- HEADER — title left, controls right, one unified row ----
 now_str = datetime.now().strftime("%d %b %Y, %H:%M")
@@ -299,8 +308,6 @@ if vms_summary:
     # ---- AI FLEET INTELLIGENCE ----
     st.markdown('<div class="section-header">AI Fleet Intelligence</div>', unsafe_allow_html=True)
 
-    ai_data = _fetch_ai_insights(token)
-
     if ai_data and not ai_data.get("is_fallback"):
         summary       = ai_data.get("fleet_summary", "—")
         ts            = ai_data.get("analysis_timestamp", "")
@@ -329,7 +336,7 @@ if vms_summary:
         """, unsafe_allow_html=True)
 
         # Metric cards — each one links silently to AI Insights
-        ai_page   = "ai_insights"
+        ai_page   = "/ai_insights"
         ac_color  = "#dc2626" if anomaly_count > 0 else "#059669"
         ac_delta  = "delta-negative" if anomaly_count > 0 else "delta-positive"
         ac_sub    = "Requires attention" if anomaly_count > 0 else "None detected"
@@ -379,7 +386,7 @@ if vms_summary:
         for col, label in zip([ai_c1, ai_c2, ai_c3], ["Anomalies Detected", "Recommendations", "Predictions"]):
             with col:
                 st.markdown(f"""
-                    <a href="pages/ai_insights.py" target="_self" style="text-decoration:none;">
+                    <a href="/ai_insights" target="_self" style="text-decoration:none;">
                     <div class="metric-card">
                         <div class="metric-card-header">{label}</div>
                         <div class="metric-card-value" style="color:#cbd5e1;">—</div>
@@ -392,7 +399,7 @@ if vms_summary:
     st.markdown('<div class="section-header">Virtual Machines</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-subheader">Overview of all virtual machines in the fleet</div>', unsafe_allow_html=True)
 
-    rows_html = ""
+    rows = []
     for vm in vms_list:
         vm_id   = vm.get("vm_id", "")
         name    = vm.get("name", "")
@@ -412,7 +419,7 @@ if vms_summary:
         else:
             h_color, h_bg, h_label = "#991b1b", "#fee2e2", "Critical"
 
-        rows_html += f"""
+        rows.append(f"""
         <tr style="border-bottom:1px solid #f1f5f9;">
             <td style="padding:0.65rem 1rem;font-weight:600;font-family:monospace;color:#0f172a;">{vm_id}</td>
             <td style="padding:0.65rem 1rem;color:#0f172a;">{name}</td>
@@ -429,12 +436,10 @@ if vms_summary:
             <td style="padding:0.65rem 1rem;color:#334155;">{cpu:.1f}%</td>
             <td style="padding:0.65rem 1rem;font-weight:600;color:{h_color};">{health:.0f}</td>
             <td style="padding:0.65rem 1rem;color:#334155;">{alerts}</td>
-        </tr>"""
+        </tr>""")
 
     th = "padding:0.6rem 1rem;color:#64748b;font-weight:600;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;text-align:left;background:#f8fafc;border-bottom:2px solid #e2e8f0;"
-    st.markdown(f"""
-    <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-top:0.5rem;">
-    <table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
+    thead_html = f"""
         <thead>
             <tr>
                 <th style="{th}">VM ID</th>
@@ -445,12 +450,11 @@ if vms_summary:
                 <th style="{th}">Score</th>
                 <th style="{th}">Alerts</th>
             </tr>
-        </thead>
-        <tbody>{rows_html}</tbody>
-    </table>
-    </div>
-    """, unsafe_allow_html=True)
-    st.caption(f"Displaying {len(vms_list)} VMs — {datetime.now().strftime('%H:%M:%S')} | Project Fortify v0.8.0")
+        </thead>"""
+    paginated_table(
+        rows, thead_html, key="home_vms", page_size=10,
+        caption=f"Displaying {len(vms_list)} VMs — {datetime.now().strftime('%H:%M:%S')} | Project Fortify v1.0.0",
+    )
 
 else:
     st.markdown("""

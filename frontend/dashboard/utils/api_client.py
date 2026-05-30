@@ -57,7 +57,7 @@ class FortifyAPIClient:
                 if status == 401:
                     clear_token()
                     st.warning("Session expired. Please log in again.")
-                    st.switch_page("pages/login.py")
+                    st.switch_page("views/login.py")
                     return None
                 elif status == 429:
                     st.error("Too many requests. Please wait a moment and try again.")

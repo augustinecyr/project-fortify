@@ -146,9 +146,6 @@ def render_card(label, value, delta=None):
 from session import load_token
 
 token = load_token()
-if not token:
-    st.switch_page("pages/login.py")
-    st.stop()
 
 api_client = FortifyAPIClient()
 
@@ -621,4 +618,4 @@ else:
     """, unsafe_allow_html=True)
 
 st.divider()
-st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v0.8.0")
+st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v1.0.0")
