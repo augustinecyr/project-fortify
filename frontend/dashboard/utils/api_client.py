@@ -6,6 +6,7 @@ import requests
 import streamlit as st
 from typing import Optional, Dict, List
 import time
+from session import clear_token
 
 
 class FortifyAPIClient:
@@ -43,16 +44,27 @@ class FortifyAPIClient:
                 if attempt < retries - 1:
                     time.sleep(1)
                     continue
-                st.error(f"❌ Cannot connect to API at {self.base_url}. Is the API running?")
+                st.error("Cannot reach the API. Check that the stack is running.")
                 return None
             except requests.exceptions.Timeout:
                 if attempt < retries - 1:
                     time.sleep(1)
                     continue
-                st.error("⏱️ Request timed out. API is taking too long to respond.")
+                st.error("Request timed out. API is taking too long to respond.")
                 return None
             except requests.exceptions.HTTPError as e:
-                st.error(f"❌ API Error: {e.response.status_code} - {e.response.text}")
+                status = e.response.status_code
+                if status == 401:
+                    clear_token()
+                    st.warning("Session expired. Please log in again.")
+                    st.switch_page("views/login.py")
+                    return None
+                elif status == 429:
+                    st.error("Too many requests. Please wait a moment and try again.")
+                elif status >= 500:
+                    st.error("The server encountered an error. Please contact support.")
+                else:
+                    st.error(f"❌ API Error {status}: {e.response.text}")
                 return None
             except Exception as e:
                 st.error(f"❌ Unexpected error: {str(e)}")

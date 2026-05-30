@@ -80,11 +80,11 @@ div[data-testid="stButton"] button:hover {
 """, unsafe_allow_html=True)
 
 # ---- INIT API ----
-api_client = FortifyAPIClient()
+from session import load_token
 
-token = st.session_state.get("token")
-if not token:
-    st.switch_page("pages/login.py")
+token = load_token()
+
+api_client = FortifyAPIClient()
 
 title_col, btn_col = st.columns([9, 0.4])
 with title_col:
@@ -278,4 +278,4 @@ with st.expander("Preview Exported Data"):
     st.json(export_data)
 
 st.divider()
-st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v0.8.0")
+st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v1.0.0")

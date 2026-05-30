@@ -4,6 +4,41 @@ Quick reference for all development commands used in Project Fortify.
 
 ---
 
+## Observability (v1.0.0)
+
+```powershell
+# Stream all service logs
+docker compose logs -f
+
+# API logs only (structured JSON)
+docker compose logs -f api
+
+# Filter for errors
+docker compose logs api | Select-String '"level":"ERROR"'
+
+# Filter for auth failures
+docker compose logs api | Select-String "auth_failure"
+
+# Filter for auth successes
+docker compose logs api | Select-String "auth_success"
+
+# Filter for a specific VM's requests
+docker compose logs api | Select-String "vm-prod-01"
+
+# Verify every API log line is valid JSON (structured logging check)
+docker compose logs api | ForEach-Object {
+    try { $_ | ConvertFrom-Json | Out-Null } catch { Write-Host "Non-JSON line: $_" }
+}
+
+# Check container health status
+docker compose ps
+
+# Live resource usage
+docker stats --no-stream
+```
+
+---
+
 ## Docker Quick Start (v0.8.0)
 
 Runs the full stack (API + Streamlit frontend + PostgreSQL + Redis) with a single command. No local Python environment required.
