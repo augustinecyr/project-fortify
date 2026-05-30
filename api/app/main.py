@@ -34,12 +34,14 @@ for _name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
 app = FastAPI(
     title="Project Fortify API",
     description="AI-assisted AI-Ops solution for infrastructure monitoring",
-    version="0.8.0",
+    version="1.0.0",
 )
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+
+_DOCS_PATHS = {"/docs", "/redoc", "/openapi.json"}
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -49,9 +51,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
-        response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
         response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=(), payment=()"
         response.headers["Cache-Control"] = "no-store, no-cache"
+        if request.url.path not in _DOCS_PATHS:
+            response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
         return response
 
 
@@ -95,6 +98,6 @@ async def root():
     """Root endpoint."""
     return {
         "message": "Welcome to Project Fortify API",
-        "version": "0.8.0",
+        "version": "1.0.0",
         "docs": "/docs"
     }

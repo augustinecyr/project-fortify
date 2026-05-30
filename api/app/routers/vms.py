@@ -13,6 +13,7 @@ from app.db.models import VirtualMachine, CPUMetric, HealthScore
 from app.auth.dependencies import get_current_user
 from app.models.user import User
 from app.models.schemas import VMUpdate
+from app.limiter import limiter
 import sys
 from pathlib import Path
 
@@ -294,6 +295,7 @@ async def get_vm_details(vm_id: str, db: Session = Depends(get_db), _: User = De
 
 
 @router.post("/metrics")
+@limiter.limit("30/minute")
 async def create_cpu_metric(
     request: Request,
     db: Session = Depends(get_db),
