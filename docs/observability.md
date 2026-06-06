@@ -11,6 +11,13 @@
 
 All four services write to Docker's `json-file` log driver with rotation (`max-size: 10m`, `max-file: 3`).
 
+> **Audit trail vs. access logs.** The stdout stream below (including per-request
+> access logs) is for *observability* and is rotated/capped. Security-relevant
+> events — logins, authorization denials, and state changes — are *additionally*
+> persisted to the durable, queryable `audit_logs` table and surfaced via the
+> operator-gated `GET /api/v1/audit` endpoint (see `docs/runbook.md` → Audit
+> trail). For "who did what", query that endpoint, not the container logs.
+
 ---
 
 ## Key log fields (API)

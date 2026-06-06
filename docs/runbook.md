@@ -86,6 +86,43 @@ Invoke-RestMethod http://localhost:8000/auth/me -Headers @{Authorization="Bearer
 A `403` response means the caller's role is insufficient; denials are recorded
 in the audit log as `authz_denied` events.
 
+**Manage existing users (admin only):**
+
+```powershell
+# List all users with roles and status
+Invoke-RestMethod http://localhost:8000/auth/users -Headers @{Authorization="Bearer $tok"}
+
+# Change a user's role and/or deactivate (id from the list above)
+Invoke-RestMethod -Method PATCH http://localhost:8000/auth/users/5 `
+  -Headers @{Authorization="Bearer $tok"} -ContentType 'application/json' `
+  -Body (@{role='operator'; is_active=$true} | ConvertTo-Json)
+
+# Admin reset of another user's password
+Invoke-RestMethod -Method POST http://localhost:8000/auth/users/5/password `
+  -Headers @{Authorization="Bearer $tok"} -ContentType 'application/json' `
+  -Body (@{new_password='newpass1234'} | ConvertTo-Json)
+```
+
+The API refuses to demote or deactivate the **last active administrator**
+(`409`), preventing accidental lock-out. A user can change their own password
+via `POST /auth/me/password` (supplying the current password).
+
+## Audit trail
+
+Security-relevant events (logins, authorization denials, user-management
+actions, VM updates, cache clears) are persisted to the `audit_logs` table and
+exposed via an **operator-gated** endpoint:
+
+```powershell
+# Recent events (newest first); filter by event/actor/time
+Invoke-RestMethod "http://localhost:8000/api/v1/audit?limit=50" -Headers @{Authorization="Bearer $tok"}
+Invoke-RestMethod "http://localhost:8000/api/v1/audit?event=auth_failure&actor=alice" -Headers @{Authorization="Bearer $tok"}
+```
+
+This is the durable, queryable security record. Per-request access logs remain
+in the container stdout stream (see `docs/observability.md`) and are *not*
+duplicated into this table.
+
 > **Note:** metric-ingest agents currently authenticate as `operator` users.
 > A dedicated service-account / scoped API-key path is planned future work
 > (ADR-7) — do not share human operator credentials with automated agents in a

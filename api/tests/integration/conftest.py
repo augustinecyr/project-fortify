@@ -23,6 +23,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.main import app
 from app.limiter import limiter
+import app.db.database as _dbmod
 from app.db.database import Base, get_db
 from app.db.models import VirtualMachine, CPUMetric
 from app.models.user import User
@@ -55,6 +56,18 @@ def disable_rate_limiting():
     limiter.enabled = False
     yield
     limiter.enabled = True
+
+
+@pytest.fixture(scope="session", autouse=True)
+def route_sessionlocal_to_test_db():
+    """The audit layer writes via app.db.database.SessionLocal directly (not the
+    get_db dependency), so point it at the test DB for the session — otherwise
+    audit rows would land in the dev DB and the /audit endpoint would not see
+    them."""
+    original = _dbmod.SessionLocal
+    _dbmod.SessionLocal = TestingSessionLocal
+    yield
+    _dbmod.SessionLocal = original
 
 
 @pytest.fixture(scope="session", autouse=True)

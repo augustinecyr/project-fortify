@@ -54,7 +54,7 @@ def require_role(minimum_role: str):
 
     def checker(user: User = Depends(get_current_user)) -> User:
         if ROLE_HIERARCHY.get(user.role, 0) < minimum_rank:
-            log_auth_event("authz_denied", user.username, success=False)
+            log_auth_event("authz_denied", user.username, success=False, role=user.role)
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient role for this operation",

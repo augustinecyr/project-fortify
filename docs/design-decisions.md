@@ -18,6 +18,7 @@ art, it cites [`related-work.md`](related-work.md).
 | [ADR-5](#adr-5-fastapi--streamlit--postgresql--redis-stack) | FastAPI + Streamlit + Postgres + Redis | Accepted |
 | [ADR-6](#adr-6-synthetic-simulated-fleet-over-live-agents) | Synthetic simulated fleet | Accepted |
 | [ADR-7](#adr-7-role-based-access-control-over-perimeter-only-access) | RBAC over perimeter-only access | Accepted |
+| [ADR-8](#adr-8-persisted-audit-trail-alongside-stdout-logs) | Persisted audit trail (DB) alongside stdout logs | Accepted |
 
 ---
 
@@ -221,3 +222,41 @@ without waiting for token expiry. **Machine identity is deliberately out of
 scope:** metric-pushing agents currently authenticate as `operator` users; a
 dedicated service-account / scoped API-key path is documented as the next
 evolution rather than built now (see the API/runbook notes).
+
+---
+
+## ADR-8: Persisted audit trail alongside stdout logs
+
+**Context.** The first cut of auditing emitted structured JSON to stdout only
+(captured by Docker's `json-file` driver). That is fine for observability but
+weak as a *security record*: it is rotated and capped (lost on rotation), not
+queryable except by grepping container logs, and cannot answer "show
+everything user X did last week."
+
+**Decision.** Add an `audit_logs` table (actor, role, event, target, detail,
+ip, success, timestamp) and persist **security-relevant events** to it —
+authentication outcomes, authorization denials, and state changes (user
+creation/update, password reset/change, VM update, cache clear). Expose them
+via an operator-gated `GET /api/v1/audit` (paged, filterable). Per-request
+access logs are *not* stored here — they remain stdout-only.
+
+**Rationale.**
+- *Queryable and retained.* A relational store makes the trail filterable by
+  actor/event/time and durable beyond log rotation — what an examiner or a
+  telco compliance review expects.
+- *Scope discipline.* Storing every read request would bloat the table and
+  bury the security signal; access logs belong in observability, not the audit
+  record. Splitting the two keeps each fit for purpose.
+- *Availability over strictness.* Audit writes are best-effort on their own
+  short-lived session: a write failure is swallowed (with a stdout fallback)
+  and never breaks the request, and the separate session means the event is
+  recorded even if the business transaction later rolls back.
+
+**Consequences.** The best-effort policy trades a small risk of a missed row
+(under DB failure) for not coupling user-facing availability to the audit
+write — an explicit, documented choice; a stricter "fail-closed" audit would be
+the hardening step if regulatory requirements demanded it. Read access is set
+at **operator** level to match the intended operator-facing audit view; note
+the trail contains other users' usernames and IPs, so tightening this to
+admin-only is the conservative alternative if that exposure is a concern.
+Retention/rotation of the table is not yet automated (future work).
