@@ -7,6 +7,25 @@ from datetime import datetime
 from typing import Optional, List
 
 
+# --- User / Auth Schemas ---
+
+class UserCreate(BaseModel):
+    """Schema for admin-driven user provisioning."""
+    username: str = Field(..., min_length=3, max_length=50, description="Unique username")
+    password: str = Field(..., min_length=8, description="Plaintext password (hashed server-side)")
+    role: str = Field("viewer", description="viewer | operator | admin")
+
+
+class UserResponse(BaseModel):
+    """Schema for returning a user (never includes the password hash)."""
+    id: int
+    username: str
+    role: str
+    is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # --- CPU Metrics Schemas ---
 
 class CPUMetricCreate(BaseModel):

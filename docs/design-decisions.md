@@ -17,6 +17,7 @@ art, it cites [`related-work.md`](related-work.md).
 | [ADR-4](#adr-4-llm-as-an-explanation-layer-only) | LLM as explanation layer only | Accepted |
 | [ADR-5](#adr-5-fastapi--streamlit--postgresql--redis-stack) | FastAPI + Streamlit + Postgres + Redis | Accepted |
 | [ADR-6](#adr-6-synthetic-simulated-fleet-over-live-agents) | Synthetic simulated fleet | Accepted |
+| [ADR-7](#adr-7-role-based-access-control-over-perimeter-only-access) | RBAC over perimeter-only access | Accepted |
 
 ---
 
@@ -176,3 +177,47 @@ generative model; a real fleet may differ. This is the headline threat to
 validity and is disclosed as such. The trade-off is justified: without labels
 there is no precision/recall study at all, and a measured-but-synthetic
 evaluation is stronger evidence than an unmeasured "real" one.
+
+---
+
+## ADR-7: Role-based access control over perimeter-only access
+
+**Context.** Fortify is intended to run as a containerised application on an
+internal Singtel VM. A tempting simplification is to treat *network access to
+the VM* as the only access control — "whoever can reach the app can use it" —
+relying on existing OAuth2/JWT authentication (Sprint 8) for identity but
+granting every authenticated user full capability.
+
+**Decision.** Add a thin **role-based access control** layer over the existing
+JWT authentication: three hierarchical roles — **viewer** (read-only
+dashboards), **operator** (+ mutate fleet state: ingest metrics, update VMs,
+refresh AI cache), **admin** (+ user/role management) — enforced by a
+`require_role` dependency (`app/auth/dependencies.py`). Mutating and
+administrative actions are attributed to the acting user in the audit log
+(`log_action`).
+
+**Rationale.**
+- *Perimeter-only access is an enterprise anti-pattern.* It conflates network
+  reachability with authorization, provides no least-privilege or segregation
+  of duties, and — critically for a telco's compliance posture — no record of
+  *who did what*. It also breaks the moment more than one person or team shares
+  the host.
+- *Least privilege is the expected design.* In a Singtel context, read-only
+  monitoring users should not be able to mutate fleet state, and only
+  administrators should provision accounts. The three-tier split maps directly
+  onto those duties.
+- *Cheap, high-leverage extension.* It reuses the existing JWT path; the change
+  is a role column, one dependency, and per-route wiring — small effort for a
+  materially stronger security posture and capstone narrative (extends the
+  Sprint 8 cyber module from authentication into authorization).
+
+**Consequences.** Authorization state lives in the local user store, which is
+the deployable stand-in for enterprise IAM. **In production this layer would
+federate to Singtel's corporate identity provider via OIDC** rather than manage
+local credentials and roles — the local store demonstrates the model without
+requiring SSO integration for the capstone. Roles are read from the database
+per request (not embedded in the JWT) so a role change takes effect immediately
+without waiting for token expiry. **Machine identity is deliberately out of
+scope:** metric-pushing agents currently authenticate as `operator` users; a
+dedicated service-account / scoped API-key path is documented as the next
+evolution rather than built now (see the API/runbook notes).

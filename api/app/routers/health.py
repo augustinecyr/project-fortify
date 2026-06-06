@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 from app.db.database import get_db
 from app.db.models import VirtualMachine, CPUMetric
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import require_viewer
 from app.models.user import User
 
 # Add analytics to path
@@ -48,7 +48,7 @@ async def system_status(db: Session = Depends(get_db)):
 
 
 @router.get("/api/v1/health/{vm_id}")
-async def get_vm_health(vm_id: str, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+async def get_vm_health(vm_id: str, db: Session = Depends(get_db), _: User = Depends(require_viewer)):
     """
     Get health score for a specific VM.
     Fetches last 24 hours of CPU metrics and calculates health score.

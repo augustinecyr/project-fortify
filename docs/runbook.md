@@ -49,6 +49,50 @@ docker compose down -v
 
 ---
 
+## User roles & access control (RBAC)
+
+Fortify enforces three hierarchical roles on top of JWT authentication
+(see ADR-7 in `docs/design-decisions.md`). Higher roles inherit all lower
+capabilities.
+
+| Role | Can do | Cannot do |
+|---|---|---|
+| `viewer` | Read all dashboards: fleet/VM lists, health, security, optimization, AI insights | Mutate any state |
+| `operator` | Everything viewer can + ingest metrics, update VMs, refresh/clear AI cache | Manage users |
+| `admin` | Everything operator can + create users & assign roles | — |
+
+**Defaults & migration.** New users default to `viewer`. The `add_user_role`
+migration backfills *existing* accounts to `admin` to avoid lock-out; the
+seeded `admin` user (`data/seeds/seed_users.py`) is created as `admin`. After
+upgrading, review accounts and down-assign roles as appropriate.
+
+**Provision a user (admin only):**
+
+```powershell
+# 1. Obtain an admin token
+$tok = (Invoke-RestMethod -Method POST http://localhost:8000/auth/token `
+  -Body @{username='admin'; password='admin123'} `
+  -ContentType 'application/x-www-form-urlencoded').access_token
+
+# 2. Create a viewer/operator/admin user
+Invoke-RestMethod -Method POST http://localhost:8000/auth/users `
+  -Headers @{Authorization="Bearer $tok"} -ContentType 'application/json' `
+  -Body (@{username='alice'; password='changeme123'; role='operator'} | ConvertTo-Json)
+
+# 3. Check your own identity and role
+Invoke-RestMethod http://localhost:8000/auth/me -Headers @{Authorization="Bearer $tok"}
+```
+
+A `403` response means the caller's role is insufficient; denials are recorded
+in the audit log as `authz_denied` events.
+
+> **Note:** metric-ingest agents currently authenticate as `operator` users.
+> A dedicated service-account / scoped API-key path is planned future work
+> (ADR-7) — do not share human operator credentials with automated agents in a
+> real deployment.
+
+---
+
 ## Upgrade procedure
 
 ```powershell
@@ -181,7 +225,8 @@ The `is_fallback: true` field in the response means the Groq API was unreachable
 
 - Verify `GROQ_API_KEY` is set: `docker exec fortify-api env | Select-String GROQ`
 - Check Groq rate limits (free tier: 30 req/min, 15k tokens/min).
-- Bust the cache and retry: `Invoke-RestMethod -Method DELETE http://localhost:8000/api/v1/ai/cache`
+- Bust the cache and retry (requires an `operator`/`admin` token — see RBAC section):
+  `Invoke-RestMethod -Method DELETE http://localhost:8000/api/v1/ai/cache -Headers @{Authorization="Bearer $tok"}`
 
 ---
 

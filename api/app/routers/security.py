@@ -9,7 +9,7 @@ from sqlalchemy import func
 
 from app.db.database import get_db
 from app.db.models import VirtualMachine
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import require_viewer
 from app.models.user import User
 from app.utils.redis_client import cache_get, cache_set
 
@@ -20,7 +20,7 @@ CACHE_TTL = 60  # seconds
 
 
 @router.get("/security/summary")
-async def get_security_summary(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+async def get_security_summary(db: Session = Depends(get_db), _: User = Depends(require_viewer)):
     """
     Fleet-wide security aggregates for the Security Posture page.
 

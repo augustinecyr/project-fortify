@@ -22,6 +22,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.main import app
+from app.limiter import limiter
 from app.db.database import Base, get_db
 from app.db.models import VirtualMachine, CPUMetric
 from app.models.user import User
@@ -29,6 +30,11 @@ from app.auth.security import get_password_hash
 
 _SUITE_USER = "suite_admin"
 _SUITE_PASS = "suitepass123"
+# Per-role users for RBAC tests.
+_OPERATOR_USER = "suite_operator"
+_OPERATOR_PASS = "operatorpass123"
+_VIEWER_USER = "suite_viewer"
+_VIEWER_PASS = "viewerpass123"
 
 # ---------------------------------------------------------------------------
 # Test database — separate from dev DB, never touches fortify
@@ -42,6 +48,15 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_
 # ---------------------------------------------------------------------------
 # Session-scoped: create tables once, drop after all tests finish
 # ---------------------------------------------------------------------------
+@pytest.fixture(scope="session", autouse=True)
+def disable_rate_limiting():
+    """Rate limits are a production concern; the suite logs in many times across
+    fixtures, so disable the limiter to avoid spurious 429s during tests."""
+    limiter.enabled = False
+    yield
+    limiter.enabled = True
+
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_database():
     Base.metadata.create_all(bind=test_engine)
@@ -160,12 +175,19 @@ def seed_test_data(setup_test_database):
             ))
         db.add_all(metrics)
 
-        if not db.query(User).filter(User.username == _SUITE_USER).first():
-            db.add(User(
-                username=_SUITE_USER,
-                hashed_password=get_password_hash(_SUITE_PASS),
-                is_active=True,
-            ))
+        seed_users = [
+            (_SUITE_USER, _SUITE_PASS, "admin"),
+            (_OPERATOR_USER, _OPERATOR_PASS, "operator"),
+            (_VIEWER_USER, _VIEWER_PASS, "viewer"),
+        ]
+        for username, password, role in seed_users:
+            if not db.query(User).filter(User.username == username).first():
+                db.add(User(
+                    username=username,
+                    hashed_password=get_password_hash(password),
+                    role=role,
+                    is_active=True,
+                ))
 
         db.commit()
     finally:
@@ -200,13 +222,29 @@ def client():
     app.dependency_overrides.clear()
 
 
-@pytest.fixture()
-def auth_client(client):
-    """TestClient pre-loaded with a valid Bearer token for protected routes."""
+def _login(client, username, password):
     token = client.post(
         "/auth/token",
-        data={"username": _SUITE_USER, "password": _SUITE_PASS},
+        data={"username": username, "password": password},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     ).json()["access_token"]
     client.headers.update({"Authorization": f"Bearer {token}"})
     return client
+
+
+@pytest.fixture()
+def auth_client(client):
+    """TestClient pre-loaded with an admin Bearer token for protected routes."""
+    return _login(client, _SUITE_USER, _SUITE_PASS)
+
+
+@pytest.fixture()
+def operator_client(client):
+    """TestClient authenticated as an operator (can act, cannot manage users)."""
+    return _login(client, _OPERATOR_USER, _OPERATOR_PASS)
+
+
+@pytest.fixture()
+def viewer_client(client):
+    """TestClient authenticated as a viewer (read-only)."""
+    return _login(client, _VIEWER_USER, _VIEWER_PASS)
