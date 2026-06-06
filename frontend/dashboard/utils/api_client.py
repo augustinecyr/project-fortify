@@ -134,3 +134,26 @@ class FortifyAPIClient:
     def clear_ai_cache(_self, token: str | None = None) -> Optional[Dict]:
         """Bust all server-side AI cache keys."""
         return _self._make_request("/api/v1/ai/cache", method="DELETE", token=token)
+
+    def get_current_user(_self, token: str | None = None) -> Optional[Dict]:
+        """Return the authenticated user's identity and role (/auth/me)."""
+        return _self._make_request("/auth/me", token=token)
+
+    def get_audit_events(
+        _self,
+        token: str | None = None,
+        limit: int = 25,
+        offset: int = 0,
+        event: str | None = None,
+        actor: str | None = None,
+    ) -> Optional[Dict]:
+        """
+        Fetch a page of the persisted audit trail (operator/admin only).
+        Not cached — the audit view is expected to reflect current activity.
+        """
+        params: Dict = {"limit": limit, "offset": offset}
+        if event:
+            params["event"] = event
+        if actor:
+            params["actor"] = actor
+        return _self._make_request("/api/v1/audit", token=token, params=params)
