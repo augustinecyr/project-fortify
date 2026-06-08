@@ -453,7 +453,7 @@ if vms_summary:
         </thead>"""
     paginated_table(
         rows, thead_html, key="home_vms", page_size=10,
-        caption=f"Displaying {len(vms_list)} VMs — {datetime.now().strftime('%H:%M:%S')} | Project Fortify v1.0.0",
+        caption=f"Displaying {len(vms_list)} VMs — {datetime.now().strftime('%H:%M:%S')} | Project Fortify v1.1.0",
     )
 
 else:

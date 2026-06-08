@@ -43,7 +43,7 @@ async def system_status(db: Session = Depends(get_db)):
     return {
         "status": "operational",
         "database": db_status,
-        "version": "0.1.0"
+        "version": "1.1.0"
     }
 
 

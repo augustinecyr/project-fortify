@@ -456,4 +456,4 @@ if fleet_vms:
     paginated_table(rows, thead_html, key="optimization_vms", page_size=10)
 
 st.divider()
-st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v1.0.0")
+st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v1.1.0")
