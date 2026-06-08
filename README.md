@@ -1,5 +1,7 @@
 # Project Fortify
 
+[![CI](https://github.com/augustinecyr/project-fortify/actions/workflows/ci.yml/badge.svg)](https://github.com/augustinecyr/project-fortify/actions/workflows/ci.yml)
+
 Project Fortify is a modular, AI-assisted AI-Ops solution designed to
 improve infrastructure reliability and security posture for virtualized
 environments.
@@ -68,6 +70,29 @@ as part of a unified solution.
 
 ---
 
+## Security & Access Control
+
+Project Fortify protects every API and dashboard surface with a layered
+authentication and authorization model:
+
+- **OAuth2 / JWT authentication** — token-based login; inactive accounts are
+  rejected at the token endpoint.
+- **Role-based access control (RBAC)** — three hierarchical roles,
+  `viewer < operator < admin`, enforced per route (reads require *viewer*,
+  ingestion/state changes require *operator*, user management requires *admin*).
+- **Persisted audit trail** — security-relevant events (authentication,
+  authorization, state changes) are written to the database *and* stdout, and
+  are queryable via the operator-gated `GET /api/v1/audit` endpoint and a
+  dedicated dashboard page.
+- **User-management lifecycle** — admins can create users, change roles,
+  activate/deactivate accounts, and reset passwords, with a last-admin
+  lock-out guard.
+
+See [`docs/design-decisions.md`](docs/design-decisions.md) (ADR-7, ADR-8) for
+the rationale.
+
+---
+
 ## Scope
 
 ### In Scope (Phase 1 MVP)
@@ -123,6 +148,47 @@ docker compose ps
 
 The system prioritises explainability, modularity, and ease of
 integration.
+
+---
+
+## Testing & Continuous Integration
+
+Quality is enforced through an automated test suite and CI:
+
+- **Unit tests** — anomaly-detection and scoring logic
+  (`api/tests/test_anomaly_detection.py`, `test_scoring.py`).
+- **Integration tests** — full API coverage including auth, RBAC, audit, and
+  user management, run against a real PostgreSQL test database
+  (`api/tests/integration/`).
+- **Continuous integration** — every push and pull request to `main` and
+  `develop` runs the full suite on GitHub Actions
+  ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+- **Offline evaluation harness** — a reproducible precision/recall/F1 study of
+  the anomaly-detection and scoring pipeline, with baselines, threshold
+  justification, and construct validation
+  ([`analytics/evaluation/`](analytics/evaluation/), see
+  [`RESULTS.md`](analytics/evaluation/RESULTS.md)).
+
+```powershell
+# Run the API test suite locally (requires a fortify_test PostgreSQL database)
+cd api
+pytest tests/ -v
+```
+
+---
+
+## Documentation
+
+| Document | Purpose |
+| --- | --- |
+| [`docs/problem-statement.md`](docs/problem-statement.md) | Problem analysis and motivation |
+| [`docs/scope-definition.md`](docs/scope-definition.md) | Scope and requirements |
+| [`docs/related-work.md`](docs/related-work.md) | Critical prior-art survey |
+| [`docs/design-decisions.md`](docs/design-decisions.md) | Architecture decision records (ADRs) |
+| [`docs/runbook.md`](docs/runbook.md) | Operations runbook |
+| [`docs/observability.md`](docs/observability.md) | Logging and monitoring |
+| [`docs/handover.md`](docs/handover.md) | Handover guide |
+| [`docs/sprints/`](docs/sprints/) | Sprint-by-sprint development log |
 
 ---
 
