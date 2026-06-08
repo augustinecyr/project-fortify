@@ -91,6 +91,26 @@ class CPUMetric(Base):
     virtual_machine = relationship("VirtualMachine", back_populates="cpu_metrics")
 
 
+class AuditLog(Base):
+    """
+    Persistent, queryable audit trail of security-relevant events
+    (authentication, authorization denials, and state changes). Per-request
+    access logs are intentionally NOT stored here — they stay in stdout for
+    observability; this table is the security record of record.
+    """
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    event = Column(String, nullable=False, index=True)   # e.g. auth_success, vm_updated
+    actor = Column(String, nullable=True, index=True)     # username; null if anonymous
+    role = Column(String, nullable=True)                  # actor's role at event time
+    target = Column(String, nullable=True)                # affected resource (vm_id, username)
+    detail = Column(String, nullable=True)                # free-form context
+    ip = Column(String, nullable=True)                    # client IP where known
+    success = Column(Boolean, nullable=True)              # outcome for auth events
+
+
 class HealthScore(Base):
     """Health Score model - unchanged for backward compatibility."""
     __tablename__ = "health_scores"

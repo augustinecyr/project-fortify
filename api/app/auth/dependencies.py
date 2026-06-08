@@ -9,6 +9,11 @@ from app.audit import log_auth_event
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
+# Role-based access control. Roles are hierarchical: a higher-ranked role
+# implicitly satisfies every lower requirement (admin can do anything an
+# operator can, an operator anything a viewer can).
+ROLE_HIERARCHY = {"viewer": 1, "operator": 2, "admin": 3}
+
 
 def get_current_user(request: Request, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     credentials_exception = HTTPException(
@@ -33,3 +38,34 @@ def get_current_user(request: Request, token: str = Depends(oauth2_scheme), db: 
 
     request.state.username = user.username
     return user
+
+
+def require_role(minimum_role: str):
+    """
+    Dependency factory enforcing a *minimum* role (see ROLE_HIERARCHY).
+
+    Returns the authenticated ``User`` so handlers can attribute actions to the
+    caller. Denials are audit-logged. Usage:
+
+        @router.delete("/cache")
+        async def clear(user: User = Depends(require_admin)): ...
+    """
+    minimum_rank = ROLE_HIERARCHY[minimum_role]
+
+    def checker(user: User = Depends(get_current_user)) -> User:
+        if ROLE_HIERARCHY.get(user.role, 0) < minimum_rank:
+            log_auth_event("authz_denied", user.username, success=False, role=user.role)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient role for this operation",
+            )
+        return user
+
+    return checker
+
+
+# Pre-built dependencies for the three tiers. Reusing these singletons keeps
+# FastAPI's dependency identity stable across routes.
+require_viewer = require_role("viewer")
+require_operator = require_role("operator")
+require_admin = require_role("admin")

@@ -7,6 +7,66 @@ from datetime import datetime
 from typing import Optional, List
 
 
+# --- User / Auth Schemas ---
+
+class UserCreate(BaseModel):
+    """Schema for admin-driven user provisioning."""
+    username: str = Field(..., min_length=3, max_length=50, description="Unique username")
+    password: str = Field(..., min_length=8, description="Plaintext password (hashed server-side)")
+    role: str = Field("viewer", description="viewer | operator | admin")
+
+
+class UserResponse(BaseModel):
+    """Schema for returning a user (never includes the password hash)."""
+    id: int
+    username: str
+    role: str
+    is_active: bool
+    created_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserUpdate(BaseModel):
+    """Schema for admin updates to a user's role and/or active status."""
+    role: Optional[str] = Field(None, description="viewer | operator | admin")
+    is_active: Optional[bool] = Field(None, description="Deactivate/reactivate the account")
+
+
+class PasswordReset(BaseModel):
+    """Schema for an admin resetting another user's password."""
+    new_password: str = Field(..., min_length=8)
+
+
+class PasswordChange(BaseModel):
+    """Schema for a user changing their own password."""
+    current_password: str = Field(...)
+    new_password: str = Field(..., min_length=8)
+
+
+class AuditLogResponse(BaseModel):
+    """Schema for a single audit-trail entry."""
+    id: int
+    timestamp: datetime
+    event: str
+    actor: Optional[str] = None
+    role: Optional[str] = None
+    target: Optional[str] = None
+    detail: Optional[str] = None
+    ip: Optional[str] = None
+    success: Optional[bool] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AuditLogListResponse(BaseModel):
+    """Schema for a paginated list of audit entries."""
+    total: int
+    limit: int
+    offset: int
+    entries: List[AuditLogResponse]
+
+
 # --- CPU Metrics Schemas ---
 
 class CPUMetricCreate(BaseModel):

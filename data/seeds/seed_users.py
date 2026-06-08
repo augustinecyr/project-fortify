@@ -22,6 +22,7 @@ def seed():
         admin = User(
             username="admin",
             hashed_password=get_password_hash("admin123"),
+            role="admin",
             is_active=True,
         )
         db.add(admin)

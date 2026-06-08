@@ -10,9 +10,10 @@ from typing import List
 from fastapi import Request
 from app.db.database import get_db
 from app.db.models import VirtualMachine, CPUMetric, HealthScore
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import require_viewer, require_operator
 from app.models.user import User
 from app.models.schemas import VMUpdate
+from app.audit import log_action
 from app.limiter import limiter
 import sys
 from pathlib import Path
@@ -24,7 +25,7 @@ router = APIRouter(prefix="/api/v1", tags=["vms"])
 
 
 @router.get("/vms")
-async def get_all_vms(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+async def get_all_vms(db: Session = Depends(get_db), _: User = Depends(require_viewer)):
     """
     Get all virtual machines with basic information.
     """
@@ -44,7 +45,7 @@ async def get_all_vms(db: Session = Depends(get_db), _: User = Depends(get_curre
 
 
 @router.get("/vms/summary")
-async def get_vms_summary(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+async def get_vms_summary(db: Session = Depends(get_db), _: User = Depends(require_viewer)):
     """
     Get all VMs with their complete information including health, security, and resources.
     This is optimized for dashboard overview - returns everything in one query.
@@ -208,7 +209,7 @@ async def get_vms_summary(db: Session = Depends(get_db), _: User = Depends(get_c
 
 
 @router.get("/vms/{vm_id}")
-async def get_vm_details(vm_id: str, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+async def get_vm_details(vm_id: str, db: Session = Depends(get_db), _: User = Depends(require_viewer)):
     """
     Get detailed information for a single VM.
     Returns all fields from the VirtualMachine model.
@@ -299,7 +300,7 @@ async def get_vm_details(vm_id: str, db: Session = Depends(get_db), _: User = De
 async def create_cpu_metric(
     request: Request,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_operator),
 ):
     """
     Ingest a single CPU metric.
@@ -374,23 +375,24 @@ async def create_cpu_metric(
     return {"status": "success", "id": db_metric.id}
 
 @router.patch("/vms/{vm_id}")
-async def update_vm(vm_id: str, update_data: VMUpdate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+async def update_vm(vm_id: str, update_data: VMUpdate, db: Session = Depends(get_db), user: User = Depends(require_operator)):
     """
     Update VM fields (partial update). Used by the metrics simulator to keep VM state current.
     """
     vm = db.query(VirtualMachine).filter(VirtualMachine.vm_id == vm_id).first()
     if not vm:
         raise HTTPException(status_code=404, detail=f"VM '{vm_id}' not found")
-    
+
     # Update only the fields that are provided
     update_dict = update_data.model_dump(exclude_unset=True)
     for key, value in update_dict.items():
         setattr(vm, key, value)
-    
+
     # Update the 'updated_at' timestamp if your model has it
     if hasattr(vm, 'updated_at'):
         vm.updated_at = datetime.now(timezone.utc)
-    
+
     db.commit()
-    
+    log_action("vm_updated", user.username, target=vm_id, detail=",".join(update_dict.keys()))
+
     return {"status": "updated", "vm_id": vm_id}

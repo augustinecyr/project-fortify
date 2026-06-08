@@ -17,8 +17,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import require_viewer, require_operator
 from app.models.user import User
+from app.audit import log_action
 from app.db.models import VirtualMachine
 from app.utils.redis_client import cache_get, cache_set, get_redis_client
 from app.utils.groq_client import (
@@ -81,7 +82,7 @@ def _build_vm_context(vm: VirtualMachine) -> Dict[str, Any]:
 # GET /api/v1/ai/insights
 # ---------------------------------------------------------------------------
 @router.get("/insights")
-async def get_fleet_insights(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+async def get_fleet_insights(db: Session = Depends(get_db), _: User = Depends(require_viewer)):
     """
     Fleet-wide AI analysis. Redis-cached for 300s.
     Returns graceful fallback if Groq is unavailable.
@@ -136,7 +137,7 @@ async def get_fleet_insights(db: Session = Depends(get_db), _: User = Depends(ge
 # GET /api/v1/ai/vm-analysis/{vm_id}
 # ---------------------------------------------------------------------------
 @router.get("/vm-analysis/{vm_id}")
-async def get_vm_analysis(vm_id: str, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+async def get_vm_analysis(vm_id: str, db: Session = Depends(get_db), _: User = Depends(require_viewer)):
     """
     Single-VM deep-dive analysis using llama3-70b. Redis-cached per vm_id for 120s.
     Returns graceful fallback if Groq is unavailable.
@@ -207,7 +208,7 @@ async def get_vm_analysis(vm_id: str, db: Session = Depends(get_db), _: User = D
 # DELETE /api/v1/ai/cache — manual cache bust for the Analyse button
 # ---------------------------------------------------------------------------
 @router.delete("/cache")
-async def clear_ai_cache(_: User = Depends(get_current_user)):
+async def clear_ai_cache(user: User = Depends(require_operator)):
     """Clear all cached AI insights. Called by the frontend Analyse button."""
     try:
         r = get_redis_client()
@@ -215,6 +216,7 @@ async def clear_ai_cache(_: User = Depends(get_current_user)):
         if keys:
             r.delete(*keys)
             logger.info("Cleared %d AI cache keys.", len(keys))
+        log_action("ai_cache_cleared", user.username, detail=f"keys={len(keys) if keys else 0}")
         return {"cleared": len(keys) if keys else 0, "message": "AI cache cleared."}
     except Exception as e:
         logger.error("Failed to clear AI cache: %s", e)

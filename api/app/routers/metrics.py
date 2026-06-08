@@ -9,7 +9,7 @@ from typing import Optional
 
 from app.db.database import get_db
 from app.db.models import VirtualMachine, CPUMetric
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import require_viewer, require_operator
 from app.models.user import User
 from app.models.schemas import (
     CPUMetricCreate,
@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/v1", tags=["metrics"])
 
 
 @router.post("/metrics/cpu", response_model=CPUMetricIngestionResponse, status_code=201)
-async def ingest_cpu_metric(metric: CPUMetricCreate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+async def ingest_cpu_metric(metric: CPUMetricCreate, db: Session = Depends(get_db), _: User = Depends(require_operator)):
     """
     Ingest a single CPU metric entry.
     
@@ -62,7 +62,7 @@ async def get_cpu_metrics(
     end_time: Optional[datetime] = None,
     limit: int = 1000,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_viewer),
 ):
     """
     Retrieve CPU metrics for a specific VM.

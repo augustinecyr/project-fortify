@@ -1,0 +1,8 @@
+# Normalise line endings. Shell scripts MUST stay LF or the Linux containers
+# fail to execute them (a stray CR breaks `set -e` and corrupts command args
+# such as `alembic upgrade head`).
+*.sh text eol=lf
+entrypoint.sh text eol=lf
+
+# Sensible defaults for the rest of the tree.
+* text=auto

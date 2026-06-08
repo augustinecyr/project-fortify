@@ -62,6 +62,7 @@ st.markdown("""
 
 sys.path.insert(0, str(Path(__file__).parent / "utils"))
 from session import load_token, clear_token, COOKIE_KEY
+from api_client import FortifyAPIClient
 
 # ---------------------------------------------------------------------------
 # Cookie manager — blocks until the browser component has initialised and sent
@@ -129,6 +130,16 @@ else:
     if st.session_state.pop("just_logged_in", False):
         _loading_screen("Signing you in…")
 
+    # Resolve the signed-in user's role once per session (used for nav gating).
+    # Re-fetched on a fresh connection (refresh / new tab) since only the token
+    # persists in the cookie.
+    if "role" not in st.session_state:
+        _me = FortifyAPIClient().get_current_user(load_token())
+        if _me:
+            st.session_state["role"] = _me.get("role", "")
+            st.session_state["username"] = _me.get("username", st.session_state.get("username", ""))
+    _role = st.session_state.get("role", "")
+
     pages = {
         "Monitoring": [
             st.Page("views/home.py", title="Home", icon=":material/home:", url_path="home"),
@@ -147,11 +158,21 @@ else:
             st.Page("views/ai_insights.py", title="AI Insights", icon=":material/psychology:", url_path="ai_insights"),
         ]
     }
+
+    # Audit trail is operator-facing (operators and admins). Viewers never see
+    # the nav entry, and the endpoint is independently RBAC-gated server-side.
+    if _role in ("operator", "admin"):
+        pages["Audit"] = [
+            st.Page("views/audit_trail.py", title="Audit Trail",
+                    icon=":material/receipt_long:", url_path="audit"),
+        ]
+
     pg = st.navigation(pages)
 
     with st.sidebar:
         username = st.session_state.get("username", "admin")
-        st.caption(f"Signed in as **{username}**")
+        _role_label = f" · {_role}" if _role else ""
+        st.caption(f"Signed in as **{username}**{_role_label}")
         if st.button("Sign out", icon=":material/logout:", use_container_width=True):
             clear_token()
             st.session_state["_just_logged_out"] = True

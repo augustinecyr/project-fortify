@@ -49,6 +49,87 @@ docker compose down -v
 
 ---
 
+## User roles & access control (RBAC)
+
+Fortify enforces three hierarchical roles on top of JWT authentication
+(see ADR-7 in `docs/design-decisions.md`). Higher roles inherit all lower
+capabilities.
+
+| Role | Can do | Cannot do |
+|---|---|---|
+| `viewer` | Read all dashboards: fleet/VM lists, health, security, optimization, AI insights | Mutate any state |
+| `operator` | Everything viewer can + ingest metrics, update VMs, refresh/clear AI cache | Manage users |
+| `admin` | Everything operator can + create users & assign roles | — |
+
+**Defaults & migration.** New users default to `viewer`. The `add_user_role`
+migration backfills *existing* accounts to `admin` to avoid lock-out; the
+seeded `admin` user (`data/seeds/seed_users.py`) is created as `admin`. After
+upgrading, review accounts and down-assign roles as appropriate.
+
+**Provision a user (admin only):**
+
+```powershell
+# 1. Obtain an admin token
+$tok = (Invoke-RestMethod -Method POST http://localhost:8000/auth/token `
+  -Body @{username='admin'; password='admin123'} `
+  -ContentType 'application/x-www-form-urlencoded').access_token
+
+# 2. Create a viewer/operator/admin user
+Invoke-RestMethod -Method POST http://localhost:8000/auth/users `
+  -Headers @{Authorization="Bearer $tok"} -ContentType 'application/json' `
+  -Body (@{username='alice'; password='changeme123'; role='operator'} | ConvertTo-Json)
+
+# 3. Check your own identity and role
+Invoke-RestMethod http://localhost:8000/auth/me -Headers @{Authorization="Bearer $tok"}
+```
+
+A `403` response means the caller's role is insufficient; denials are recorded
+in the audit log as `authz_denied` events.
+
+**Manage existing users (admin only):**
+
+```powershell
+# List all users with roles and status
+Invoke-RestMethod http://localhost:8000/auth/users -Headers @{Authorization="Bearer $tok"}
+
+# Change a user's role and/or deactivate (id from the list above)
+Invoke-RestMethod -Method PATCH http://localhost:8000/auth/users/5 `
+  -Headers @{Authorization="Bearer $tok"} -ContentType 'application/json' `
+  -Body (@{role='operator'; is_active=$true} | ConvertTo-Json)
+
+# Admin reset of another user's password
+Invoke-RestMethod -Method POST http://localhost:8000/auth/users/5/password `
+  -Headers @{Authorization="Bearer $tok"} -ContentType 'application/json' `
+  -Body (@{new_password='newpass1234'} | ConvertTo-Json)
+```
+
+The API refuses to demote or deactivate the **last active administrator**
+(`409`), preventing accidental lock-out. A user can change their own password
+via `POST /auth/me/password` (supplying the current password).
+
+## Audit trail
+
+Security-relevant events (logins, authorization denials, user-management
+actions, VM updates, cache clears) are persisted to the `audit_logs` table and
+exposed via an **operator-gated** endpoint:
+
+```powershell
+# Recent events (newest first); filter by event/actor/time
+Invoke-RestMethod "http://localhost:8000/api/v1/audit?limit=50" -Headers @{Authorization="Bearer $tok"}
+Invoke-RestMethod "http://localhost:8000/api/v1/audit?event=auth_failure&actor=alice" -Headers @{Authorization="Bearer $tok"}
+```
+
+This is the durable, queryable security record. Per-request access logs remain
+in the container stdout stream (see `docs/observability.md`) and are *not*
+duplicated into this table.
+
+> **Note:** metric-ingest agents currently authenticate as `operator` users.
+> A dedicated service-account / scoped API-key path is planned future work
+> (ADR-7) — do not share human operator credentials with automated agents in a
+> real deployment.
+
+---
+
 ## Upgrade procedure
 
 ```powershell
@@ -181,7 +262,8 @@ The `is_fallback: true` field in the response means the Groq API was unreachable
 
 - Verify `GROQ_API_KEY` is set: `docker exec fortify-api env | Select-String GROQ`
 - Check Groq rate limits (free tier: 30 req/min, 15k tokens/min).
-- Bust the cache and retry: `Invoke-RestMethod -Method DELETE http://localhost:8000/api/v1/ai/cache`
+- Bust the cache and retry (requires an `operator`/`admin` token — see RBAC section):
+  `Invoke-RestMethod -Method DELETE http://localhost:8000/api/v1/ai/cache -Headers @{Authorization="Bearer $tok"}`
 
 ---
 

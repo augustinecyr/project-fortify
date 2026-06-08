@@ -29,3 +29,4 @@ def clear_token():
     st.session_state["_clear_token"] = True  # picked up by app.py cookie block
     st.session_state.pop("token", None)
     st.session_state.pop("username", None)
+    st.session_state.pop("role", None)

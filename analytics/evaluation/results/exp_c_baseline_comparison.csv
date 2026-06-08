@@ -1,0 +1,9 @@
+anomaly_tier,detector,tp,fp,fn,tn,precision,recall,f1
+clear,"z-score (project, t=2.0)",712,25,38,20825,0.9661,0.9493,0.9576
+clear,fixed threshold (>80),218,299,532,20551,0.4217,0.2907,0.3441
+clear,"robust z-score (MAD, t=2.0)",677,863,73,19987,0.4396,0.9027,0.5913
+clear,isolation forest,744,4288,6,16562,0.1479,0.992,0.2574
+subtle,"z-score (project, t=2.0)",198,612,552,20238,0.2444,0.264,0.2538
+subtle,fixed threshold (>80),355,6321,395,14529,0.0532,0.4733,0.0956
+subtle,"robust z-score (MAD, t=2.0)",186,592,564,20258,0.2391,0.248,0.2435
+subtle,isolation forest,364,5588,386,15262,0.0612,0.4853,0.1086
