@@ -344,7 +344,7 @@ if vms_summary:
         rc_delta  = "delta-neutral" if rec_count > 0 else "delta-positive"
         rc_sub    = "Action items identified" if rec_count > 0 else "No actions needed"
         pc_color  = "#6366f1" if pred_count > 0 else "#059669"
-        pc_sub    = "Trend forecasts available" if pred_count > 0 else "No trends flagged"
+        pc_sub    = "Trend outlooks available" if pred_count > 0 else "No trends flagged"
 
         ai_c1, ai_c2, ai_c3 = st.columns(3)
         with ai_c1:
@@ -367,7 +367,7 @@ if vms_summary:
             st.markdown(f"""
                 <a href="{ai_page}" target="_self" style="text-decoration:none;">
                 <div class="metric-card">
-                    <div class="metric-card-header">Predictions</div>
+                    <div class="metric-card-header">Risk Outlooks</div>
                     <div class="metric-card-value" style="color:{pc_color};">{pred_count}</div>
                     <div class="metric-card-delta delta-neutral">{pc_sub}</div>
                 </div></a>""", unsafe_allow_html=True)
@@ -383,7 +383,7 @@ if vms_summary:
     else:
         st.markdown('<div class="section-subheader">No analysis run yet — visit AI Insights to generate your first fleet analysis</div>', unsafe_allow_html=True)
         ai_c1, ai_c2, ai_c3 = st.columns(3)
-        for col, label in zip([ai_c1, ai_c2, ai_c3], ["Anomalies Detected", "Recommendations", "Predictions"]):
+        for col, label in zip([ai_c1, ai_c2, ai_c3], ["Anomalies Detected", "Recommendations", "Risk Outlooks"]):
             with col:
                 st.markdown(f"""
                     <a href="/ai_insights" target="_self" style="text-decoration:none;">
@@ -453,7 +453,7 @@ if vms_summary:
         </thead>"""
     paginated_table(
         rows, thead_html, key="home_vms", page_size=10,
-        caption=f"Displaying {len(vms_list)} VMs — {datetime.now().strftime('%H:%M:%S')} | Project Fortify v1.1.0",
+        caption=f"Displaying {len(vms_list)} VMs — {datetime.now().strftime('%H:%M:%S')} | Project Fortify v1.1.1",
     )
 
 else:

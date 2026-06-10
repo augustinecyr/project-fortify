@@ -326,6 +326,8 @@ Add the following line to your `.env` file at the project root:
 
 ```bash
 GROQ_API_KEY=gsk_your_key_here
+# Optional — defaults to llama-3.1-8b-instant; override if Groq deprecates it
+GROQ_MODEL=llama-3.1-8b-instant
 ```
 
 > **Note:** The `.env` file lives at the project root (same level as `docker-compose.yml`).
@@ -789,4 +791,5 @@ LOG_LEVEL=INFO
 
 # AI / LLM (Sprint 6)
 GROQ_API_KEY=gsk_your_key_here  # Get from https://console.groq.com/keys
+GROQ_MODEL=llama-3.1-8b-instant  # Optional; override if the default is deprecated
 ```

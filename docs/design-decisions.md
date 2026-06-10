@@ -126,6 +126,19 @@ mitigates hallucination: generation is conditioned on real computed numbers.
 detection and scoring continue without explanations. Explanations are
 presentation, not ground truth, and are labelled as such in the UI.
 
+**Update (v1.1.1, 10 Jun 2026).** The fail-safe boundary is now enforced
+mechanically rather than by prompt discipline alone: completions are requested
+in Groq's JSON mode and validated against Pydantic schemas
+(`api/app/utils/groq_client.py`), so a syntactically or structurally invalid
+response is retried once and then replaced by the labelled fallback — it can
+never be cached or rendered. Extra keys the model invents are dropped at the
+same boundary. The model ID moved to configuration (`GROQ_MODEL`). LLM
+narratives are now also embedded in exported reports (CSV/JSON), explicitly
+marked as advisory, with the section omitted entirely when the LLM is
+unavailable. Forward-looking output is framed as **trend-grounded risk
+outlooks** rather than forecasts (prompts and UI labels both) — no forecasting
+model backs the system, so it must not assert specific future values.
+
 ---
 
 ## ADR-5: FastAPI + Streamlit + PostgreSQL + Redis stack

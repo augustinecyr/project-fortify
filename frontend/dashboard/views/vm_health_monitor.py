@@ -204,13 +204,6 @@ if not vm_details or not health_data:
     st.markdown('<div class="error-card"><strong>Unable to load data</strong>Verify the backend is running and refresh the page.</div>', unsafe_allow_html=True)
     st.stop()
 
-# ---- RESTORE DATA PREVIEW ----
-with st.expander("🔍 Preview Data", expanded=False):
-    st.write("**VM Details from Summary:**")
-    st.json(vm_details)
-    st.write("**Health Data from get_health_score():**")
-    st.json(health_data)
-
 # ---- EXTRACT DATA ----
 vm_name = vm_details.get("name", "Unknown")
 host = vm_details.get("host", "N/A")
@@ -509,9 +502,9 @@ if ai_data:
                 break
         st.markdown(f"""
             <div class="metric-card">
-                <div class="info-label">Prediction Horizon</div>
+                <div class="info-label">Outlook Horizon</div>
                 <div class="info-value" style="font-size:1.5rem;color:#6366f1;">{horizon}</div>
-                <div class="info-delta">Forecast window</div>
+                <div class="info-delta">Monitoring window</div>
             </div>
         """, unsafe_allow_html=True)
 
@@ -591,7 +584,7 @@ if ai_data:
         st.markdown("""
             <div style="font-size:0.75rem;font-weight:600;color:#64748b;
                         text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem;">
-                Prediction
+                Risk Outlook
             </div>
         """, unsafe_allow_html=True)
         st.markdown(f"""
@@ -618,4 +611,4 @@ else:
     """, unsafe_allow_html=True)
 
 st.divider()
-st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v1.1.0")
+st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v1.1.1")

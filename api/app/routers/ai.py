@@ -21,12 +21,15 @@ from app.auth.dependencies import require_viewer, require_operator
 from app.models.user import User
 from app.audit import log_action
 from app.db.models import VirtualMachine
+from app.config import settings
 from app.utils.redis_client import cache_get, cache_set, get_redis_client
 from app.utils.groq_client import (
     FLEET_FALLBACK,
     FLEET_SYSTEM_PROMPT,
+    FleetInsightsResponse,
     VM_FALLBACK,
     VM_SYSTEM_PROMPT,
+    VMAnalysisResponse,
     query_llm,
 )
 
@@ -84,11 +87,11 @@ def _build_vm_context(vm: VirtualMachine) -> Dict[str, Any]:
 @router.get("/insights")
 async def get_fleet_insights(db: Session = Depends(get_db), _: User = Depends(require_viewer)):
     """
-    Fleet-wide AI analysis. Redis-cached for 300s.
+    Fleet-wide AI analysis. Redis-cached for 1800s.
     Returns graceful fallback if Groq is unavailable.
     """
     cache_key = "ai:fleet_insights"
-    model = "llama-3.1-8b-instant"
+    model = settings.GROQ_MODEL
 
     # Cache hit
     cached = cache_get(cache_key)
@@ -111,6 +114,7 @@ async def get_fleet_insights(db: Session = Depends(get_db), _: User = Depends(re
         model=model,
         temperature=0.2,
         retries=1,
+        schema=FleetInsightsResponse,
     )
 
     is_fallback = insights is None
@@ -139,11 +143,11 @@ async def get_fleet_insights(db: Session = Depends(get_db), _: User = Depends(re
 @router.get("/vm-analysis/{vm_id}")
 async def get_vm_analysis(vm_id: str, db: Session = Depends(get_db), _: User = Depends(require_viewer)):
     """
-    Single-VM deep-dive analysis using llama3-70b. Redis-cached per vm_id for 120s.
+    Single-VM deep-dive analysis. Redis-cached per vm_id for 600s.
     Returns graceful fallback if Groq is unavailable.
     """
     cache_key = f"ai:vm_analysis:{vm_id}"
-    model = "llama-3.1-8b-instant"
+    model = settings.GROQ_MODEL
 
     # Cache hit
     cached = cache_get(cache_key)
@@ -181,6 +185,7 @@ async def get_vm_analysis(vm_id: str, db: Session = Depends(get_db), _: User = D
         temperature=0.2,
         max_tokens=2048,
         retries=1,
+        schema=VMAnalysisResponse,
     )
 
     is_fallback = analysis is None

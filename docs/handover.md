@@ -81,6 +81,13 @@ Rotating this key immediately invalidates all active sessions — every logged-i
 2. Create a new key and update `.env`.
 3. Restart the API: `docker compose up -d api`
 
+### Groq model (`GROQ_MODEL`)
+
+Groq deprecates hosted models periodically. If AI Insights starts returning
+fallbacks and the API logs show a model-not-found error, set `GROQ_MODEL` in
+`.env` to a current production model and restart the API — no code change
+needed.
+
 ### Admin user password
 
 The admin user is seeded by `data/seeds/seed_users.py`. To change the password:

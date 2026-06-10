@@ -1,6 +1,6 @@
 """
 AI Insights — Groq LLM-powered fleet intelligence.
-On-demand analysis with fleet summary, anomalies, recommendations, and predictions.
+On-demand analysis with fleet summary, anomalies, recommendations, and risk outlooks.
 
 Place at: frontend/dashboard/views/ai_insights.py
 """
@@ -273,7 +273,7 @@ with title_col:
     st.markdown("""
         <div class="page-header-title">AI Insights</div>
         <div class="page-header-sub">
-            On-demand LLM-powered analysis — fleet summary, anomalies, recommendations, and predictions
+            On-demand LLM-powered analysis — fleet summary, anomalies, recommendations, and risk outlooks
         </div>
     """, unsafe_allow_html=True)
 
@@ -338,14 +338,14 @@ if st.session_state.ai_insights:
 
     preds = data.get("predictions", [])
     st.markdown(
-        f'<div class="section-header">Predictions'
+        f'<div class="section-header">Risk Outlook'
         f'<span style="font-size:0.8rem;font-weight:400;color:#94a3b8;margin-left:8px;">'
-        f'{len(preds)} forecasts</span></div>',
+        f'{len(preds)} outlooks</span></div>',
         unsafe_allow_html=True
     )
     st.markdown(
-        '<div class="section-subheader">Urgency score derived from predicted timeframe — '
-        'shorter window = higher urgency</div>',
+        '<div class="section-subheader">Trend-based risk outlooks, not forecasts — urgency derived '
+        'from the stated timeframe (shorter window = higher urgency)</div>',
         unsafe_allow_html=True
     )
 
@@ -485,4 +485,4 @@ if analyse_clicked:
         st.markdown('<div class="error-card"><strong>Unable to load data</strong>Verify the backend is running and refresh the page.</div>', unsafe_allow_html=True)
 
 st.divider()
-st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v1.1.0")
+st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v1.1.1")

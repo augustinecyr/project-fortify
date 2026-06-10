@@ -194,6 +194,7 @@ All variables are read from the `.env` file at the project root and passed to th
 | `SECRET_KEY` | `change-me-in-production` | **Yes** | JWT signing key — must be random and secret |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | No | JWT lifetime |
 | `GROQ_API_KEY` | _(empty)_ | No | Required for AI Insights; get from `console.groq.com/keys` |
+| `GROQ_MODEL` | `llama-3.1-8b-instant` | No | Groq model for all AI insights; override if the default is deprecated |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:8501,http://frontend:8501` | No | Comma-separated list of allowed frontend origins |
 | `LOG_LEVEL` | `INFO` | No | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `API_KEY` | `dev-api-key-12345` | No | Legacy header key; unused in v1.0 JWT flow |

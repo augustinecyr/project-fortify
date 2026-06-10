@@ -202,4 +202,4 @@ with next_col:
         st.rerun()
 
 st.divider()
-st.caption(f"Last refreshed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v1.1.0")
+st.caption(f"Last refreshed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v1.1.1")

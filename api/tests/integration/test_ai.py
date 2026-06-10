@@ -39,7 +39,10 @@ MOCK_VM_ANALYSIS = {
     "health_explanation": "VM is under high load.",
     "anomaly_explanation": "CPU spike detected in last 24 hours.",
     "risk_level": "medium",
-    "recommended_actions": ["Scale up instance", "Review running processes"],
+    "recommended_actions": [
+        {"priority": "high", "action": "Scale up instance"},
+        {"priority": "medium", "action": "Review running processes"},
+    ],
     "prediction": "Performance may degrade within 48 hours.",
 }
 

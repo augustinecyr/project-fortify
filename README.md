@@ -155,8 +155,9 @@ integration.
 
 Quality is enforced through an automated test suite and CI:
 
-- **Unit tests** — anomaly-detection and scoring logic
-  (`api/tests/test_anomaly_detection.py`, `test_scoring.py`).
+- **Unit tests** — anomaly-detection and scoring logic, plus the Groq LLM
+  wrapper contract (JSON mode, schema validation, fallback behaviour)
+  (`api/tests/test_anomaly_detection.py`, `test_scoring.py`, `test_groq_client.py`).
 - **Integration tests** — full API coverage including auth, RBAC, audit, and
   user management, run against a real PostgreSQL test database
   (`api/tests/integration/`).

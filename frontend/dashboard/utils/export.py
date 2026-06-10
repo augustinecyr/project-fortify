@@ -28,10 +28,13 @@ def safe_get(data, key, default="N/A"):
     return value if value is not None else default
 
 
-def generate_csv_report(vm_id, vm_name, health_data, metrics_df, time_range):
+def generate_csv_report(vm_id, vm_name, health_data, metrics_df, time_range, ai_analysis=None):
     """
     Generate a comprehensive CSV report with all enhanced VM parameters.
     Handles None values gracefully.
+
+    ai_analysis: optional dict from GET /api/v1/ai/vm-analysis/{vm_id};
+    when provided, an advisory LLM-generated section is appended.
     """
     output = StringIO()
     
@@ -146,7 +149,27 @@ def generate_csv_report(vm_id, vm_name, health_data, metrics_df, time_range):
     ])
     alerts_df.to_csv(output, header=False, index=False)
     output.write("\n")
-    
+
+    # ============= AI ANALYSIS (ADVISORY) =============
+    if ai_analysis:
+        output.write("AI ANALYSIS (LLM-GENERATED, ADVISORY ONLY)\n")
+        ai_rows = [
+            ["Model", safe_get(ai_analysis, 'model_used')],
+            ["Generated At", safe_get(ai_analysis, 'analysis_timestamp')],
+            ["Risk Level", str(safe_get(ai_analysis, 'risk_level')).capitalize()],
+            ["Health Explanation", safe_get(ai_analysis, 'health_explanation')],
+            ["Anomaly Explanation", safe_get(ai_analysis, 'anomaly_explanation')],
+            ["Outlook (24-48h)", safe_get(ai_analysis, 'prediction')],
+        ]
+        for i, rec in enumerate(ai_analysis.get('recommended_actions') or [], start=1):
+            if isinstance(rec, dict):
+                ai_rows.append([
+                    f"Recommended Action {i}",
+                    f"[{rec.get('priority', 'n/a')}] {rec.get('action', '')}",
+                ])
+        pd.DataFrame(ai_rows).to_csv(output, header=False, index=False)
+        output.write("\n")
+
     # ============= CPU STATISTICS =============
     output.write("CPU STATISTICS\n")
     stats_df = pd.DataFrame([
@@ -173,17 +196,20 @@ def generate_csv_report(vm_id, vm_name, health_data, metrics_df, time_range):
     return output.getvalue()
 
 
-def generate_json_report(vm_id, vm_name, health_data, metrics_list, time_range):
+def generate_json_report(vm_id, vm_name, health_data, metrics_list, time_range, ai_analysis=None):
     """
     Generate a comprehensive JSON report with nested structure.
     Handles None values gracefully.
+
+    ai_analysis: optional dict from GET /api/v1/ai/vm-analysis/{vm_id};
+    when provided, an advisory LLM-generated section is included.
     """
     report = {
         "export_metadata": {
             "generated_at": datetime.now().isoformat(),
             "report_type": "comprehensive_vm_health_security_analysis",
             "time_range": time_range,
-            "format_version": "2.0"
+            "format_version": "2.1"
         },
         
         "vm_identification": {
@@ -280,6 +306,17 @@ def generate_json_report(vm_id, vm_name, health_data, metrics_list, time_range):
             "detailed_metrics": metrics_list
         },
         
+        "ai_analysis": {
+            "disclaimer": "LLM-generated advisory content. Quantitative scores above are computed by Project Fortify's statistical models; this section explains them in plain language.",
+            "model_used": ai_analysis.get('model_used'),
+            "analysis_timestamp": ai_analysis.get('analysis_timestamp'),
+            "risk_level": ai_analysis.get('risk_level'),
+            "health_explanation": ai_analysis.get('health_explanation'),
+            "anomaly_explanation": ai_analysis.get('anomaly_explanation'),
+            "recommended_actions": ai_analysis.get('recommended_actions', []),
+            "outlook_24_48h": ai_analysis.get('prediction')
+        } if ai_analysis else None,
+
         "report_summary": {
             "overall_status": "healthy" if health_data.get('health_score', 0) >= 80 else "warning" if health_data.get('health_score', 0) >= 60 else "critical",
             "requires_attention": health_data.get('alert_count', 0) > 0 or health_data.get('critical_vulnerabilities', 0) > 0,
