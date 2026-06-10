@@ -56,12 +56,10 @@ class TestGetVMDetails:
                       "current_cpu", "current_memory", "current_disk"]:
             assert field in data, f"Missing field: {field}"
 
-    def test_unknown_vm_returns_error(self, auth_client):
-        # vms.py returns ({"error": "..."}, 404) — FastAPI serialises as a list
+    def test_unknown_vm_returns_404(self, auth_client):
         response = auth_client.get("/api/v1/vms/does-not-exist")
-        data = response.json()
-        assert isinstance(data, list)
-        assert "error" in data[0]
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"]
 
 
 class TestPatchVM:

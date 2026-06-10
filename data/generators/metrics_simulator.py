@@ -10,11 +10,12 @@ import requests
 from datetime import datetime, UTC
 from typing import Dict, Any
 
-API_URL = "http://localhost:8000/api/v1/metrics"
-VM_UPDATE_URL = "http://localhost:8000/api/v1/vms"
-HEALTH_SCORE_URL = "http://localhost:8000/api/v1/health"
-AI_INSIGHTS_URL = "http://localhost:8000/api/v1/ai/insights"
-AUTH_URL = "http://localhost:8000/auth/token"
+BASE_URL = "http://localhost:8000"
+API_URL = f"{BASE_URL}/api/v1/metrics/cpu"
+VM_UPDATE_URL = f"{BASE_URL}/api/v1/vms"
+HEALTH_SCORE_URL = f"{BASE_URL}/api/v1/health"
+AI_INSIGHTS_URL = f"{BASE_URL}/api/v1/ai/insights"
+AUTH_URL = f"{BASE_URL}/auth/token"
 SIM_USERNAME = "admin"
 SIM_PASSWORD = "admin123"
 
@@ -232,7 +233,7 @@ def send_cpu_metric(vm_id: str, cpu_percent: float, timestamp: str):
     for attempt in range(2):
         try:
             response = requests.post(API_URL, json=payload, headers=auth_headers(), timeout=3)
-            if response.status_code == 200:
+            if response.status_code == 201:
                 return True
             if response.status_code == 401 and attempt == 0:
                 fetch_token()
@@ -342,7 +343,7 @@ def print_summary_stats(metrics_count: int, start_time: datetime):
 def test_api_connectivity():
     print("\n  Testing API connectivity...")
     try:
-        response = requests.get(f"{API_URL.replace('/metrics', '')}/health", timeout=2)
+        response = requests.get(f"{BASE_URL}/health", timeout=2)
         print(f"  ✓ API health check: OK")
     except:
         print(f"  ⚠️  Cannot reach API at {API_URL}")

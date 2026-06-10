@@ -1,15 +1,16 @@
 """
 CPU Metrics endpoints.
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import func
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from app.db.database import get_db
 from app.db.models import VirtualMachine, CPUMetric
 from app.auth.dependencies import require_viewer, require_operator
+from app.limiter import limiter
 from app.models.user import User
 from app.models.schemas import (
     CPUMetricCreate,
@@ -22,11 +23,19 @@ router = APIRouter(prefix="/api/v1", tags=["metrics"])
 
 
 @router.post("/metrics/cpu", response_model=CPUMetricIngestionResponse, status_code=201)
-async def ingest_cpu_metric(metric: CPUMetricCreate, db: Session = Depends(get_db), _: User = Depends(require_operator)):
+@limiter.limit("240/minute")
+async def ingest_cpu_metric(
+    request: Request,
+    metric: CPUMetricCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_operator),
+):
     """
     Ingest a single CPU metric entry.
-    
-    Validates that the VM exists before inserting the metric.
+
+    Validates that the VM exists before inserting the metric, and keeps the
+    VM's live reading (current_cpu) and 24h rolling average up to date so the
+    fleet summary reflects ingested data without a separate update call.
     """
     # Check if VM exists
     vm = db.query(VirtualMachine).filter(VirtualMachine.vm_id == metric.vm_id).first()
@@ -44,6 +53,20 @@ async def ingest_cpu_metric(metric: CPUMetricCreate, db: Session = Depends(get_d
         source=metric.source,
     )
     db.add(db_metric)
+    # The session runs with autoflush=False, so flush explicitly — the 24h
+    # average below must include the metric being ingested.
+    db.flush()
+
+    # Update VM live state and 24h aggregate.
+    vm.current_cpu = metric.cpu_percent
+    day_ago = datetime.now(timezone.utc) - timedelta(days=1)
+    avg = (
+        db.query(func.avg(CPUMetric.cpu_percent))
+        .filter(CPUMetric.vm_id == metric.vm_id, CPUMetric.timestamp >= day_ago)
+        .scalar()
+    )
+    vm.avg_cpu_24h = round(float(avg), 2) if avg is not None else None
+
     db.commit()
     db.refresh(db_metric)
 
@@ -60,7 +83,7 @@ async def get_cpu_metrics(
     vm_id: str,
     start_time: Optional[datetime] = None,
     end_time: Optional[datetime] = None,
-    limit: int = 1000,
+    limit: int = Query(1000, ge=1, le=10000),
     db: Session = Depends(get_db),
     _: User = Depends(require_viewer),
 ):
