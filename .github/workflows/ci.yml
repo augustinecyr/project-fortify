@@ -21,7 +21,9 @@ jobs:
     # which hardcodes fortify_user:fortify_pass@localhost:5432/fortify_test.
     services:
       postgres:
-        image: postgres:16
+        # Same major version as docker-compose.yml (postgres:15-alpine) so CI
+        # tests against what actually runs.
+        image: postgres:15
         env:
           POSTGRES_USER: fortify_user
           POSTGRES_PASSWORD: fortify_pass

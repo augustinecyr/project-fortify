@@ -10,6 +10,7 @@ from pythonjsonlogger import jsonlogger
 from starlette.middleware.base import BaseHTTPMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from app.config import settings
 from app.limiter import limiter
 from app.routers import health, metrics, vms, security, optimization, ai, auth, audit
 from app.audit import log_request
@@ -31,6 +32,14 @@ for _name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
     _uvicorn_logger.handlers = [_handler]
     _uvicorn_logger.propagate = False
 
+# JWTs signed with the shipped default key can be forged by anyone who has
+# read the source — refuse to let that slip into a real deployment silently.
+if settings.SECRET_KEY == "change-me-in-production":
+    logging.getLogger(__name__).critical(
+        "SECRET_KEY is set to the insecure default — JWT tokens are forgeable. "
+        "Set SECRET_KEY in the environment before any non-local deployment."
+    )
+
 app = FastAPI(
     title="Project Fortify API",
     description="AI-assisted AI-Ops solution for infrastructure monitoring",
@@ -50,6 +59,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        # HSTS only takes effect once the API is served over HTTPS (browsers
+        # ignore it on plain HTTP); set here so a TLS-terminating deployment
+        # is covered without code changes.
         response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
         response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=(), payment=()"
         response.headers["Cache-Control"] = "no-store, no-cache"
@@ -80,7 +92,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
 

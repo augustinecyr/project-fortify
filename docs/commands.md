@@ -787,10 +787,6 @@ REDIS_URL=redis://localhost:6379/0
 API_KEY=dev-api-key-12345
 LOG_LEVEL=INFO
 
-# Analytics
-ANOMALY_THRESHOLD=0.7          # Z-score threshold for CPU anomaly detection
-SCORE_UPDATE_INTERVAL=300      # How often (seconds) health scores are recalculated
-
 # AI / LLM (Sprint 6)
 GROQ_API_KEY=gsk_your_key_here  # Get from https://console.groq.com/keys
 ```

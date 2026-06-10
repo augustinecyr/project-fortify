@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "components"))
 # ---- IMPORTS ----
 try:
     from api_client import FortifyAPIClient
-    from helpers import get_health_status_class
+    from helpers import get_health_status_class, esc
     from components.charts import create_cpu_timeseries
     from components.health_widget import render_health_score
 except ImportError as e:
@@ -472,7 +472,7 @@ if ai_data:
 
     # Subheader with meta
     st.markdown(
-        f'<div class="section-subheader">Model: {model} &nbsp;·&nbsp; Analysed: {ts_fmt}</div>',
+        f'<div class="section-subheader">Model: {esc(model)} &nbsp;·&nbsp; Analysed: {esc(ts_fmt)}</div>',
         unsafe_allow_html=True
     )
 
@@ -483,7 +483,7 @@ if ai_data:
         st.markdown(f"""
             <div class="metric-card" style="border-left:4px solid {rborder};">
                 <div class="info-label">Risk Level</div>
-                <div class="info-value" style="font-size:1.5rem;color:{rfg};">{risk.capitalize()}</div>
+                <div class="info-value" style="font-size:1.5rem;color:{rfg};">{esc(risk.capitalize())}</div>
                 <div class="info-delta">Assessed by Groq LLM</div>
             </div>
         """, unsafe_allow_html=True)
@@ -531,7 +531,7 @@ if ai_data:
             <div style="background:#f8fafc;border-left:4px solid #6366f1;
                         border-radius:0.5rem;padding:0.875rem 1rem;
                         font-size:0.875rem;color:#1e3a5f;line-height:1.7;">
-                {ai_data.get('health_explanation', '—')}
+                {esc(ai_data.get('health_explanation', '—'))}
             </div>
         """, unsafe_allow_html=True)
 
@@ -546,7 +546,7 @@ if ai_data:
             <div style="background:#f8fafc;border-left:4px solid #e2e8f0;
                         border-radius:0.5rem;padding:0.875rem 1rem;
                         font-size:0.875rem;color:#334155;line-height:1.7;">
-                {ai_data.get('anomaly_explanation', '—')}
+                {esc(ai_data.get('anomaly_explanation', '—'))}
             </div>
         """, unsafe_allow_html=True)
 
@@ -572,9 +572,9 @@ if ai_data:
                                 margin-bottom:0.5rem;">
                         <span style="font-size:0.7rem;font-weight:700;
                                      text-transform:uppercase;letter-spacing:0.05em;
-                                     color:{afg};">{pri}</span>
+                                     color:{afg};">{esc(pri)}</span>
                         <span style="font-size:0.825rem;color:{afg};margin-left:8px;">
-                            {action.get('action', '—')}
+                            {esc(action.get('action', '—'))}
                         </span>
                     </div>
                 """, unsafe_allow_html=True)
@@ -598,7 +598,7 @@ if ai_data:
             <div style="background:#fafaf9;border-left:4px solid #8b5cf6;
                         border-radius:0.5rem;padding:0.875rem 1rem;
                         font-size:0.875rem;color:#44403c;line-height:1.7;">
-                {ai_data.get('prediction', '—')}
+                {esc(ai_data.get('prediction', '—'))}
             </div>
         """, unsafe_allow_html=True)
 

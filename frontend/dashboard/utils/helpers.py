@@ -1,11 +1,22 @@
 """
 Helper functions for the dashboard.
 """
+import html
 import math
 import pandas as pd
 import streamlit as st
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
+
+
+def esc(value) -> str:
+    """
+    HTML-escape a value before interpolating it into st.markdown(...,
+    unsafe_allow_html=True). Mandatory for any text that originates outside
+    the codebase — LLM responses especially, which are not schema-validated
+    and could otherwise inject markup into the operator's browser.
+    """
+    return html.escape(str(value), quote=True)
 
 
 def paginated_table(rows: List[str], thead_html: str, key: str,

@@ -28,8 +28,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: fortify-redis
-    ports:
-      - "6379:6379"
+    # No host port mapping — Redis is unauthenticated and only the API
+    # (on the compose network) needs to reach it.
     volumes:
       - redis_data:/data
     healthcheck:
@@ -56,8 +56,6 @@ services:
       API_KEY: ${API_KEY:-dev-api-key-12345}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8501,http://frontend:8501}
-      ANOMALY_THRESHOLD: ${ANOMALY_THRESHOLD:-0.7}
-      SCORE_UPDATE_INTERVAL: ${SCORE_UPDATE_INTERVAL:-300}
     ports:
       - "8000:8000"
     depends_on:

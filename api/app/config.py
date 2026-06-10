@@ -17,10 +17,6 @@ class Settings(BaseSettings):
     # API
     API_KEY: str = "dev-api-key-12345"
     LOG_LEVEL: str = "INFO"
-    
-    # Analytics
-    ANOMALY_THRESHOLD: float = 0.7
-    SCORE_UPDATE_INTERVAL: int = 300  # seconds
 
     # Auth / JWT
     SECRET_KEY: str = "change-me-in-production"

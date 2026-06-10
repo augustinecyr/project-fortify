@@ -196,8 +196,6 @@ All variables are read from the `.env` file at the project root and passed to th
 | `GROQ_API_KEY` | _(empty)_ | No | Required for AI Insights; get from `console.groq.com/keys` |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:8501,http://frontend:8501` | No | Comma-separated list of allowed frontend origins |
 | `LOG_LEVEL` | `INFO` | No | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
-| `ANOMALY_THRESHOLD` | `0.7` | No | Z-score threshold for CPU anomaly detection |
-| `SCORE_UPDATE_INTERVAL` | `300` | No | Seconds between health score recalculations |
 | `API_KEY` | `dev-api-key-12345` | No | Legacy header key; unused in v1.0 JWT flow |
 
 ---

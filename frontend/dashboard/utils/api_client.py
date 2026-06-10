@@ -100,11 +100,6 @@ class FortifyAPIClient:
         """Get CPU metrics for a specific VM."""
         return _self._make_request(f"/api/v1/metrics/cpu/{vm_id}?limit={limit}", token=token)
 
-    @st.cache_data(ttl=120)
-    def get_memory_metrics(_self, vm_id: str, limit: int = 1440, token: str | None = None) -> Optional[Dict]:
-        """Fetch memory metrics for a VM."""
-        return _self._make_request(f"/api/v1/metrics/memory/{vm_id}?limit={limit}", token=token)
-
     @st.cache_data(ttl=60)
     def get_security_summary(_self, token: str | None = None) -> Optional[Dict]:
         """Get fleet-wide security aggregates."""

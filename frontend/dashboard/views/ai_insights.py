@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "components"))
 # ---- IMPORTS ----
 try:
     from api_client import FortifyAPIClient
+    from helpers import esc
 except ImportError as e:
     st.markdown('<div class="error-card"><strong>Unable to load data</strong>Verify the backend is running and refresh the page.</div>', unsafe_allow_html=True)
     st.stop()
@@ -203,15 +204,15 @@ def render_anomalies(anomalies: list):
         st.markdown(f"""
             <div class="anomaly-card" style="background:{bg};border-color:{border};">
                 <div style="font-weight:600;font-size:0.875rem;color:{fg};margin-bottom:0.2rem;">
-                    {a.get('vm_id', '—')} &nbsp;·&nbsp; {a.get('vm_name', '—')}
+                    {esc(a.get('vm_id', '—'))} &nbsp;·&nbsp; {esc(a.get('vm_name', '—'))}
                     <span style="font-size:0.7rem;font-weight:500;margin-left:8px;
                         background:{border};color:white;padding:1px 8px;border-radius:9999px;
                         text-transform:uppercase;letter-spacing:0.04em;">
-                        {a.get('severity', 'info')}
+                        {esc(a.get('severity', 'info'))}
                     </span>
                 </div>
                 <div style="font-size:0.825rem;color:{fg};opacity:0.9;">
-                    {a.get('explanation', '—')}
+                    {esc(a.get('explanation', '—'))}
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -236,17 +237,17 @@ def render_recommendations(recommendations: list):
         st.markdown(f"""
             <div class="rec-card">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:0.25rem;">
-                    <span class="rec-title">{rec.get('title', '—')}</span>
+                    <span class="rec-title">{esc(rec.get('title', '—'))}</span>
                     <span style="font-size:0.7rem;font-weight:500;
                         background:{bg};color:{fg};padding:1px 8px;
                         border-radius:9999px;text-transform:uppercase;
                         letter-spacing:0.04em;white-space:nowrap;">
-                        {rec.get('priority', '').upper()}
+                        {esc(rec.get('priority', '').upper())}
                     </span>
                 </div>
-                <div class="rec-desc">{rec.get('description', '—')}</div>
+                <div class="rec-desc">{esc(rec.get('description', '—'))}</div>
                 <div style="font-size:0.775rem;color:#94a3b8;margin-top:0.35rem;">
-                    Affected: {affected_str}
+                    Affected: {esc(affected_str)}
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -294,13 +295,13 @@ if st.session_state.ai_insights:
     vm_count = data.get("vm_count", "—")
     st.markdown(
         f'<div class="section-subheader">'
-        f'Last analysed: {ts} &nbsp;·&nbsp; Model: {model} &nbsp;·&nbsp; {vm_count} VMs'
+        f'Last analysed: {esc(ts)} &nbsp;·&nbsp; Model: {esc(model)} &nbsp;·&nbsp; {esc(vm_count)} VMs'
         f'</div>',
         unsafe_allow_html=True
     )
 
     # ---- FLEET SUMMARY ----
-    st.markdown(f'<div class="summary-bar">{data.get("fleet_summary", "—")}</div>',
+    st.markdown(f'<div class="summary-bar">{esc(data.get("fleet_summary", "—"))}</div>',
                 unsafe_allow_html=True)
 
     # ---- ANOMALIES | RECOMMENDATIONS ----
@@ -375,11 +376,12 @@ if st.session_state.ai_insights:
                 return "#d97706"
             return "#6366f1"
 
-        vm_labels    = [f"{p.get('vm_id','—')} · {p.get('vm_name','—')}" for p in preds]
+        # Escaped — plotly axis labels and hover templates render an HTML subset.
+        vm_labels    = [f"{esc(p.get('vm_id','—'))} · {esc(p.get('vm_name','—'))}" for p in preds]
         urgency_vals = [timeframe_to_urgency(p.get("timeframe", "")) for p in preds]
         colors       = [urgency_color(v) for v in urgency_vals]
-        timeframes   = [p.get("timeframe", "—") for p in preds]
-        predictions  = [p.get("prediction", "—") for p in preds]
+        timeframes   = [esc(p.get("timeframe", "—")) for p in preds]
+        predictions  = [esc(p.get("prediction", "—")) for p in preds]
 
         fig = go.Figure()
 
@@ -436,12 +438,12 @@ if st.session_state.ai_insights:
             st.markdown(f"""
                 <div class="pred-card">
                     <div class="pred-vm">
-                        {pred.get('vm_id', '—')} &nbsp;·&nbsp; {pred.get('vm_name', '—')}
+                        {esc(pred.get('vm_id', '—'))} &nbsp;·&nbsp; {esc(pred.get('vm_name', '—'))}
                         <span style="font-size:0.75rem;font-weight:400;color:#78716c;margin-left:8px;">
-                            {pred.get('timeframe', '—')}
+                            {esc(pred.get('timeframe', '—'))}
                         </span>
                     </div>
-                    <div class="pred-text">{pred.get('prediction', '—')}</div>
+                    <div class="pred-text">{esc(pred.get('prediction', '—'))}</div>
                 </div>
             """, unsafe_allow_html=True)
 
