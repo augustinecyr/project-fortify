@@ -196,13 +196,6 @@ docker exec -it fortify-postgres psql -U fortify_user -d fortify
 
 ## Development Commands
 
-### Script method to boot services
-
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\infrastructure\start-fortify.ps1
-```
-
 ### Running the Dashboard
 
 ```powershell
@@ -718,10 +711,8 @@ docker restart fortify-postgres
 ### Starting a Full Development Session
 
 ```powershell
-# Option A — script (recommended)
-cd infrastructure
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\start-fortify.ps1
+# Option A — full Docker stack (recommended)
+docker-compose up -d
 
 # Option B — manual (4 terminals)
 # Terminal 1 — Docker

@@ -127,9 +127,8 @@ def check_vm_data():
         else:
             print("\n💡 Some fields are NULL. This means:")
             print("   1. Database wasn't seeded with enhanced data, OR")
-            print("   2. Migration wasn't run before seeding")
+            print("   2. Migrations weren't applied (the API entrypoint runs alembic upgrade head on startup)")
             print("\n📝 To fix:")
-            print("   python data/seeds/migrate_database.py")
             print("   python data/seeds/seed_database.py")
         
         print("\n" + "=" * 80)
