@@ -19,6 +19,7 @@ art, it cites [`related-work.md`](related-work.md).
 | [ADR-6](#adr-6-synthetic-simulated-fleet-over-live-agents) | Synthetic simulated fleet | Accepted |
 | [ADR-7](#adr-7-role-based-access-control-over-perimeter-only-access) | RBAC over perimeter-only access | Accepted |
 | [ADR-8](#adr-8-persisted-audit-trail-alongside-stdout-logs) | Persisted audit trail (DB) alongside stdout logs | Accepted |
+| [ADR-9](#adr-9-uniform-error-contract-with-fail-safe-status-mapping) | Uniform error contract with fail-safe status mapping | Accepted |
 
 ---
 
@@ -273,3 +274,60 @@ at **operator** level to match the intended operator-facing audit view; note
 the trail contains other users' usernames and IPs, so tightening this to
 admin-only is the conservative alternative if that exposure is a concern.
 Retention/rotation of the table is not yet automated (future work).
+
+---
+
+## ADR-9: Uniform error contract with fail-safe status mapping
+
+**Context.** A self-conducted review of the API's error semantics found that
+*unexpected* failures were handled inconsistently. Unhandled exceptions fell
+through to FastAPI's default `500 {"detail": "Internal Server Error"}` with no
+correlation handle; a database outage surfaced as that same opaque 500 rather
+than a dependency signal; a check-then-insert race on the unique `username`
+constraint produced a 500 instead of a conflict; and two sites echoed raw
+exception strings to the client (`/api/v1/status` returned `error: <driver
+text>`, the AI cache-clear returned `Cache clear failed: <e>`), the same
+insecure-output-handling class the LLM-rendering fix addressed (OWASP LLM02).
+For an operations platform, predictable and non-leaky error behaviour is part
+of the contract, not an afterthought.
+
+**Decision.** Establish one error contract enforced centrally
+(`api/app/main.py`):
+- A consistent JSON envelope for handler-generated errors — `{"detail": <safe
+  message>, "request_id": <id>}` — and an **`X-Request-ID` correlation header on
+  every response**, so any client-visible failure can be tied to a server log
+  line.
+- Global exception handlers that map failure *kinds* to honest status codes:
+  `IntegrityError → 409`, `OperationalError → 503`, other `SQLAlchemyError →
+  500`, and a catch-all `Exception → 500` that logs the full trace server-side
+  and returns a generic body.
+- **No raw exception text crosses the boundary**: the offending sites return
+  generic messages and log the detail. `/api/v1/status` returns **503** (not a
+  200 with the error in the body) when the database is unreachable, so
+  orchestrators and load balancers can detect an unhealthy instance.
+- `get_db` rolls back on exception so a failed request cannot leave a dirty
+  session for the next user of the connection pool.
+
+**Rationale.**
+- *Honest status codes are operationally meaningful.* 503 vs 500 vs 409 tells a
+  caller (or an orchestrator) whether to retry, page, or fix input — collapsing
+  all three into 500 discards that signal.
+- *Correlation without disclosure.* The request id gives support a handle into
+  the logs while the generic body keeps internals (paths, driver strings, host
+  IPs) off the wire — the same discipline applied to LLM output (ADR-4) and
+  rendered HTML, applied to error paths.
+- *Centralised, not per-route.* Handling kinds once at the application boundary
+  keeps every endpoint consistent and means new routes inherit the contract for
+  free.
+
+**Consequences.** Handled domain errors raised explicitly by routes keep their
+existing `{"detail": ...}` shape (the request id rides in the header), so the
+change is additive and did not require rewriting per-route error responses.
+Some intentional behaviours are deliberately **not** mapped to error codes and
+are documented as graceful degradation rather than failure: an unavailable LLM
+returns `200` with an `is_fallback` flag (ADR-4), and an unavailable Redis cache
+degrades to a silent no-op — in both cases the core request still succeeds, so a
+non-2xx code would misrepresent the outcome. Regression coverage lives in
+`api/tests/integration/test_error_handling.py` (correlation header, the
+409/503/500 mappings, the status-down path, and assertions that no raw internal
+text appears in any error body).
