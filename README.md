@@ -91,6 +91,20 @@ authentication and authorization model:
 See [`docs/design-decisions.md`](docs/design-decisions.md) (ADR-7, ADR-8) for
 the rationale.
 
+### Demo Accounts
+
+The development seed (`data/seeds/seed_users.py`) provisions one account per
+role for demos and RBAC sanity checks:
+
+| Username   | Password      | Role     |
+|------------|---------------|----------|
+| `admin`    | `admin123`    | admin    |
+| `operator` | `operator123` | operator |
+| `viewer`   | `viewer123`   | viewer   |
+
+> ⚠️ These are well-known development credentials only. Change or remove them
+> before any non-local deployment.
+
 ---
 
 ## Scope
