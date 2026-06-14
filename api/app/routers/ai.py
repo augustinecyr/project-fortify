@@ -225,4 +225,4 @@ async def clear_ai_cache(user: User = Depends(require_operator)):
         return {"cleared": len(keys) if keys else 0, "message": "AI cache cleared."}
     except Exception as e:
         logger.error("Failed to clear AI cache: %s", e)
-        raise HTTPException(status_code=500, detail=f"Cache clear failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to clear AI cache.")

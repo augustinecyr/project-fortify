@@ -29,5 +29,10 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        # A failed request must not leave the session in a dirty/partial state
+        # for the next user of the connection pool.
+        db.rollback()
+        raise
     finally:
         db.close()

@@ -1,12 +1,15 @@
 """
 Health check and VM health scoring endpoints.
 """
+import logging
 import sys
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import datetime, timedelta, timezone
+
+logger = logging.getLogger(__name__)
 
 from app.db.database import get_db
 from app.db.models import VirtualMachine, CPUMetric
@@ -30,21 +33,29 @@ async def health_check():
 
 
 @router.get("/api/v1/status")
-async def system_status(db: Session = Depends(get_db)):
+async def system_status(response: Response, db: Session = Depends(get_db)):
     """
     System status endpoint with database connectivity check.
+
+    Returns 503 when the database is unreachable so orchestrators and load
+    balancers can detect an unhealthy instance. The raw exception is logged
+    server-side only — never echoed to the client.
     """
     try:
         db.execute(text("SELECT 1"))
-        db_status = "connected"
+        return {
+            "status": "operational",
+            "database": "connected",
+            "version": "1.1.1",
+        }
     except Exception as e:
-        db_status = f"error: {str(e)}"
-
-    return {
-        "status": "operational",
-        "database": db_status,
-        "version": "1.1.1"
-    }
+        logger.error("Database connectivity check failed: %s", e)
+        response.status_code = 503
+        return {
+            "status": "degraded",
+            "database": "disconnected",
+            "version": "1.1.1",
+        }
 
 
 @router.get("/api/v1/health/{vm_id}")

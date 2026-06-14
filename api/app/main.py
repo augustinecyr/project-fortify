@@ -4,9 +4,12 @@ FastAPI main application entry point for Project Fortify.
 import logging
 import os
 import time
+import uuid
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pythonjsonlogger import jsonlogger
+from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
 from starlette.middleware.base import BaseHTTPMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -14,6 +17,8 @@ from app.config import settings
 from app.limiter import limiter
 from app.routers import health, metrics, vms, security, optimization, ai, auth, audit
 from app.audit import log_request
+
+logger = logging.getLogger(__name__)
 
 # Configure root logger to emit structured JSON so all uvicorn and app log
 # lines are parseable by log aggregators without regex.
@@ -50,6 +55,64 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
+def _error_response(request: Request, status_code: int, message: str) -> JSONResponse:
+    """Consistent JSON error envelope. Carries the request id so a client can
+    quote it when reporting a failure, and never echoes raw internals."""
+    request_id = getattr(request.state, "request_id", None)
+    return JSONResponse(
+        status_code=status_code,
+        content={"detail": message, "request_id": request_id},
+        headers={"X-Request-ID": request_id} if request_id else None,
+    )
+
+
+@app.exception_handler(IntegrityError)
+async def _integrity_error_handler(request: Request, exc: IntegrityError):
+    # e.g. a concurrent insert losing the race on a unique constraint after a
+    # check-then-insert — surface as a conflict rather than an opaque 500.
+    logger.warning(
+        "Integrity error on %s %s [request_id=%s]: %s",
+        request.method, request.url.path, getattr(request.state, "request_id", None), exc,
+    )
+    return _error_response(
+        request, 409,
+        "The operation conflicts with existing data (a uniqueness or integrity constraint).",
+    )
+
+
+@app.exception_handler(OperationalError)
+async def _operational_error_handler(request: Request, exc: OperationalError):
+    # DB unreachable / connection dropped — a dependency problem, not a 500.
+    logger.error(
+        "Database unavailable on %s %s [request_id=%s]: %s",
+        request.method, request.url.path, getattr(request.state, "request_id", None), exc,
+    )
+    return _error_response(
+        request, 503,
+        "Service temporarily unavailable — a backend dependency could not be reached.",
+    )
+
+
+@app.exception_handler(SQLAlchemyError)
+async def _sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError):
+    logger.error(
+        "Database error on %s %s [request_id=%s]: %s",
+        request.method, request.url.path, getattr(request.state, "request_id", None), exc,
+    )
+    return _error_response(request, 500, "A database error occurred.")
+
+
+@app.exception_handler(Exception)
+async def _unhandled_error_handler(request: Request, exc: Exception):
+    # Last line of defence: log the full trace server-side, return a generic
+    # body so internals (paths, driver strings) never reach the client.
+    logger.exception(
+        "Unhandled error on %s %s [request_id=%s]",
+        request.method, request.url.path, getattr(request.state, "request_id", None),
+    )
+    return _error_response(request, 500, "An unexpected error occurred.")
+
+
 _DOCS_PATHS = {"/docs", "/redoc", "/openapi.json"}
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -72,10 +135,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 class RequestAuditMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        # Correlation id: one per request, echoed in the response header and in
+        # error envelopes so a client-visible failure can be tied to a log line.
+        request.state.request_id = uuid.uuid4().hex
         start = time.perf_counter()
         response = await call_next(request)
         duration_ms = (time.perf_counter() - start) * 1000
         username = getattr(request.state, "username", "")
+        response.headers["X-Request-ID"] = request.state.request_id
         log_request(request.method, request.url.path, response.status_code, duration_ms, username)
         return response
 
