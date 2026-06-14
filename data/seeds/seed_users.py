@@ -1,5 +1,7 @@
 """
-Seed script: creates the default admin user for development and testing.
+Seed script: creates the default development/demo users — one per RBAC role.
+For local development and demos only; these are well-known credentials and
+must never be used in a real deployment.
 Run from the api/ directory with the venv activated:
     python ../data/seeds/seed_users.py
 """
@@ -12,22 +14,32 @@ from app.db.database import SessionLocal
 from app.models.user import User
 from app.auth.security import get_password_hash
 
+# (username, password, role) — one account per role for demo / RBAC sanity checks.
+DEMO_USERS = [
+    ("admin", "admin123", "admin"),
+    ("operator", "operator123", "operator"),
+    ("viewer", "viewer123", "viewer"),
+]
+
 
 def seed():
     db = SessionLocal()
     try:
-        if db.query(User).filter(User.username == "admin").first():
-            print("Admin user already exists — skipping.")
-            return
-        admin = User(
-            username="admin",
-            hashed_password=get_password_hash("admin123"),
-            role="admin",
-            is_active=True,
-        )
-        db.add(admin)
+        created = 0
+        for username, password, role in DEMO_USERS:
+            if db.query(User).filter(User.username == username).first():
+                print(f"User '{username}' already exists — skipping.")
+                continue
+            db.add(User(
+                username=username,
+                hashed_password=get_password_hash(password),
+                role=role,
+                is_active=True,
+            ))
+            created += 1
+            print(f"User '{username}' ({role}) created.")
         db.commit()
-        print("Admin user created successfully.")
+        print(f"Done — {created} user(s) created.")
     finally:
         db.close()
 

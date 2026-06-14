@@ -8,6 +8,9 @@ recorded (see `docs/design-decisions.md`). The original sketch and the reasons
 the delivered stack diverged from it are kept at the end of this document for
 traceability.
 
+A one-page visual of this stack is available at
+[`application-stack.html`](application-stack.html) (open in a browser).
+
 ## Delivered Stack (v1.1.1)
 
 ### Application Layer

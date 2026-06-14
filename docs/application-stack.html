@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Fortify — Application Stack (v1.1.1)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #f4f6f9;
+    color: #111827;
+    line-height: 1.5;
+    padding: 40px 20px;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 32px; }
+  header h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; }
+  header p { color: #6b7280; font-size: 0.9rem; margin-top: 6px; }
+
+  .layer {
+    background: #ffffff;
+    border: 1px solid #e2e6ec;
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+  }
+  .layer-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .layer-head .badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #fff;
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+  .layer-head h2 { font-size: 1.05rem; font-weight: 700; }
+  .layer-head .note { color: #9ca3af; font-size: 0.8rem; margin-left: auto; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 6px 11px;
+    font-size: 0.85rem;
+  }
+  .chip b { font-weight: 600; }
+  .chip span { color: #6b7280; font-size: 0.78rem; }
+
+  .c-frontend { background: #2563eb; }
+  .c-api      { background: #0891b2; }
+  .c-auth     { background: #7c3aed; }
+  .c-ai       { background: #db2777; }
+  .c-data     { background: #ea580c; }
+  .c-platform { background: #475569; }
+
+  .flow {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 1.1rem;
+    margin: -8px 0 6px;
+  }
+  footer {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 0.78rem;
+    margin-top: 28px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Project Fortify — Application Stack</h1>
+    <p>Delivered architecture as of v1.1.1 (June 2026). See <code>docs/technical-stack.md</code> for rationale.</p>
+  </header>
+
+  <div class="layer">
+    <div class="layer-head">
+      <span class="badge c-frontend">Frontend</span>
+      <h2>Operator Dashboard</h2>
+      <span class="note">role-gated UI</span>
+    </div>
+    <div class="chips">
+      <div class="chip"><b>Streamlit</b> <span>dashboard</span></div>
+      <div class="chip"><b>Plotly</b> <span>visualizations</span></div>
+      <div class="chip"><b>Pandas</b> <span>data handling</span></div>
+    </div>
+  </div>
+
+  <div class="flow">&#8595;&nbsp; HTTPS / JWT &nbsp;&#8595;</div>
+
+  <div class="layer">
+    <div class="layer-head">
+      <span class="badge c-api">API</span>
+      <h2>Application Layer</h2>
+      <span class="note">Python 3.12</span>
+    </div>
+    <div class="chips">
+      <div class="chip"><b>FastAPI</b> <span>REST</span></div>
+      <div class="chip"><b>Pydantic v2</b> <span>validation</span></div>
+      <div class="chip"><b>Uvicorn</b> <span>ASGI</span></div>
+      <div class="chip"><b>SQLAlchemy 2.0</b> <span>ORM</span></div>
+      <div class="chip"><b>Alembic</b> <span>migrations</span></div>
+      <div class="chip"><b>slowapi</b> <span>rate limiting</span></div>
+    </div>
+  </div>
+
+  <div class="layer">
+    <div class="layer-head">
+      <span class="badge c-auth">Security</span>
+      <h2>Authentication &amp; Access Control</h2>
+    </div>
+    <div class="chips">
+      <div class="chip"><b>OAuth2 / JWT</b> <span>python-jose</span></div>
+      <div class="chip"><b>bcrypt</b> <span>password hashing</span></div>
+      <div class="chip"><b>3-tier RBAC</b> <span>viewer &lt; operator &lt; admin</span></div>
+      <div class="chip"><b>Audit Trail</b> <span>persisted events</span></div>
+    </div>
+  </div>
+
+  <div class="layer">
+    <div class="layer-head">
+      <span class="badge c-ai">Analytics &amp; AI</span>
+      <h2>Detection, Scoring &amp; Explanation</h2>
+    </div>
+    <div class="chips">
+      <div class="chip"><b>NumPy</b> <span>z-score anomaly detection</span></div>
+      <div class="chip"><b>Composite scoring</b> <span>health &amp; security</span></div>
+      <div class="chip"><b>Groq · Llama 3</b> <span>explanation only, never detection</span></div>
+      <div class="chip"><b>Eval harness</b> <span>precision / recall / F1</span></div>
+    </div>
+  </div>
+
+  <div class="flow">&#8595;&nbsp; persistence &amp; cache &nbsp;&#8595;</div>
+
+  <div class="layer">
+    <div class="layer-head">
+      <span class="badge c-data">Data</span>
+      <h2>Storage Layer</h2>
+    </div>
+    <div class="chips">
+      <div class="chip"><b>PostgreSQL</b> <span>metadata &amp; results</span></div>
+      <div class="chip"><b>Redis</b> <span>LLM response cache</span></div>
+    </div>
+  </div>
+
+  <div class="layer">
+    <div class="layer-head">
+      <span class="badge c-platform">Platform</span>
+      <h2>Deployment &amp; Operations</h2>
+    </div>
+    <div class="chips">
+      <div class="chip"><b>Docker Compose</b> <span>single-command deploy</span></div>
+      <div class="chip"><b>JSON logging</b> <span>structured observability</span></div>
+      <div class="chip"><b>GitHub Actions</b> <span>CI test suite</span></div>
+      <div class="chip"><b>pytest</b> <span>unit · integration · smoke</span></div>
+    </div>
+  </div>
+
+  <footer>Project Fortify v1.1.1 &middot; synthetic, read-only, single-tenant by design</footer>
+</div>
+</body>
+</html>
