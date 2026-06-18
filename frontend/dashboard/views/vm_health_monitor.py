@@ -363,7 +363,7 @@ with tab1:
 # =============================
 with tab2:
 
-    st.info("💡 **Current Memory Snapshot** - Historical memory tracking coming soon")
+    st.caption("Current memory snapshot for this VM.")
 
     current_memory = vm_details.get("current_memory")
     memory_used_mb = vm_details.get("memory_used_mb")
