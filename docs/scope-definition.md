@@ -3,7 +3,7 @@
 Project Fortify's scope was defined in January 2026 as a deliberately small
 Phase 1 MVP and then expanded incrementally as development surfaced new
 requirements. This document records the original baseline, when and why each
-expansion was pulled into scope, and the delivered scope as of v1.1.1
+expansion was pulled into scope, and the delivered scope as of v1.1.2
 (June 2026). Each expansion is planned and recorded in detail in
 `docs/sprints/`; design rationale lives in `docs/design-decisions.md`.
 
@@ -47,12 +47,13 @@ Deferred to Phase 2+ at project start:
 | 24–30 May 2026 (v1.0.0) | Sprint 10 | Security hardening (secure headers, audit logging), structured JSON observability, operations runbook and handover guide, persistent sessions | Production-readiness gaps identified while containerizing in Sprint 9 |
 | 3–8 Jun 2026 (v1.1.0) | Post-v1.0 cycle | Three-tier RBAC (viewer/operator/admin), persisted audit trail with operator-facing audit UI, user-management lifecycle, offline evaluation harness (precision/recall/F1, threshold and baseline studies), CI pipeline | Authentication alone left no least-privilege or accountability story (ADR-7, ADR-8); detector accuracy had been asserted but never measured (`analytics/evaluation/`) |
 | 10 Jun 2026 (v1.1.1) | Post-v1.0 cycle | LLM-layer hardening (Groq JSON mode, Pydantic-validated responses, configurable `GROQ_MODEL`), AI analysis embedded in exported reports, Export Report page reworked into an explicit select → generate → download flow, LLM "predictions" reframed as trend-grounded risk outlooks | LLM responses were parsed but never shape-validated, so a malformed analysis could be cached; the "explainable, stakeholder-facing reporting" objective was not actually served by report exports; forecast-style language overclaimed what the system can substantiate (ADR-4 update) |
+| 14–18 Jun 2026 (v1.1.2) | Post-v1.0 cycle | Uniform API error-handling contract (single `{detail, request_id}` envelope, `X-Request-ID` on every response, global handlers mapping DB faults to 409/503/500 with no internal-detail leakage), plus a dependency-security pass raising `python-jose`, `requests`, and `python-multipart` floors above known CVEs | API error semantics were inconsistent and a few handlers leaked raw exception text, which is examiner-visible and fails the "no information disclosure" security bar; advisory-flagged transitive dependencies had to be lifted above their CVE-affected ranges (ADR-9) |
 
 Two of the original Phase 2+ items were therefore delivered ahead of plan:
 cost optimization recommendations (Sprint 5) and a substantial part of
 extended security analytics (security posture page, RBAC, audit trail).
 
-## Delivered Scope (v1.1.1, June 2026)
+## Delivered Scope (v1.1.2, June 2026)
 
 - Ingestion of 30+ VM parameters with continuous simulation of a synthetic fleet (ADR-6)
 - Statistical anomaly detection (z-score, threshold justified empirically) and composite health scoring
@@ -61,6 +62,7 @@ extended security analytics (security posture page, RBAC, audit trail).
 - LLM-generated explanations and trend narratives (explanation only, never detection), schema-validated at the API boundary and embedded in exportable stakeholder reports
 - OAuth2/JWT authentication, three-tier RBAC, persisted audit trail, user-management lifecycle
 - Single-command containerized deployment with structured observability, runbook, and handover documentation
+- Uniform API error-handling contract (consistent `{detail, request_id}` envelope, request-ID tracing, no internal-detail leakage) with dependencies held above known CVEs (ADR-9)
 - Offline evaluation harness with reproducible accuracy experiments; CI running the full test suite
 
 ## Out of Scope (unchanged)
