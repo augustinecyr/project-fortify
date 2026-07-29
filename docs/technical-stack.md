@@ -1,6 +1,6 @@
 # Technical Stack Overview
 
-This document records the technology stack as **delivered** in v1.1.1
+This document records the technology stack as **delivered** in v1.1.2
 (June 2026). An aspirational stack was sketched in January 2026 at project
 start; several of those choices were deliberately not pursued once the MVP
 scope settled (see `docs/scope-definition.md`) and the design rationale was
@@ -11,7 +11,7 @@ traceability.
 A one-page visual of this stack is available at
 [`application-stack.html`](application-stack.html) (open in a browser).
 
-## Delivered Stack (v1.1.1)
+## Delivered Stack (v1.1.2)
 
 ### Application Layer
 - FastAPI (Python 3.12), REST APIs
@@ -65,7 +65,7 @@ A one-page visual of this stack is available at
 The following was the early, pre-implementation stack sketch. It is retained
 for traceability; it does **not** describe the delivered system.
 
-| Sketched (Jan 2026) | Delivered (v1.1.1) | Reason for divergence |
+| Sketched (Jan 2026) | Delivered (v1.1.2) | Reason for divergence |
 |---------------------|--------------------|-----------------------|
 | scikit-learn baseline models, PyTorch for future enhancements, optional GPU | NumPy z-score detection | A transparent statistical detector outperformed the explainability and reproducibility needs of the MVP; ML training infrastructure was unjustified for the synthetic fleet (ADR-1) |
 | Self-hosted open-source LLMs (Mistral / Llama) | Groq-hosted Llama 3 via API | Self-hosting an LLM was out of scope for a single-container deployment; a hosted inference API removed the GPU and serving burden (ADR-5) |

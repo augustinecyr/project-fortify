@@ -361,4 +361,4 @@ elif payload:
     st.caption("Selection changed — click **Generate report** to refresh the downloads.")
 
 st.divider()
-st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v1.1.1")
+st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Project Fortify v1.1.2")
