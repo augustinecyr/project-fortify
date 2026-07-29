@@ -107,17 +107,19 @@ async def get_cpu_metrics(
     if start_time is None:
         start_time = end_time - timedelta(hours=24)
 
-    # Query metrics
+    # Query metrics. Order descending so that when the window holds more rows
+    # than `limit`, we keep the most recent ones — then reverse back to
+    # chronological order for the response (charts expect ascending time).
     query = (
         db.query(CPUMetric)
         .filter(CPUMetric.vm_id == vm_id)
         .filter(CPUMetric.timestamp >= start_time)
         .filter(CPUMetric.timestamp <= end_time)
-        .order_by(CPUMetric.timestamp.asc())
+        .order_by(CPUMetric.timestamp.desc())
         .limit(limit)
     )
 
-    metrics = query.all()
+    metrics = list(reversed(query.all()))
 
     return CPUMetricsListResponse(
         vm_id=vm_id,

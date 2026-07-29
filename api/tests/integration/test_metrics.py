@@ -1,7 +1,7 @@
 ﻿"""
 Integration tests for CPU metrics ingestion and retrieval endpoints.
 """
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 
 class TestIngestCPUMetric:
@@ -98,6 +98,40 @@ class TestGetCPUMetrics:
         response = auth_client.get("/api/v1/metrics/cpu/test-vm-001?limit=3")
         data = response.json()
         assert len(data["metrics"]) <= 3
+
+    def test_get_metrics_limit_keeps_most_recent(self, auth_client):
+        """Regression test: when the window holds more rows than `limit`,
+        the endpoint must return the most recent rows, not the oldest slice.
+
+        Ingests 5 metrics for test-vm-003 several hours in the past (well
+        outside any other test's "now"-timestamped data, so this is immune
+        to ordering/pollution from the rest of the suite) and scopes the
+        query with start_time/end_time to that exact window.
+        """
+        base = datetime.now(timezone.utc) - timedelta(hours=3)
+        for i in range(5):
+            auth_client.post("/api/v1/metrics/cpu", json={
+                "vm_id": "test-vm-003",
+                "timestamp": (base - timedelta(minutes=i * 5)).isoformat(),
+                "cpu_percent": 10.0 + i * 10,
+                "source": "test",
+            })
+
+        response = auth_client.get(
+            "/api/v1/metrics/cpu/test-vm-003",
+            params={
+                "start_time": (base - timedelta(minutes=25)).isoformat(),
+                "end_time": (base + timedelta(minutes=5)).isoformat(),
+                "limit": 3,
+            },
+        )
+        data = response.json()["metrics"]
+        assert len(data) == 3
+        # i=0..2 (cpu 10/20/30) are the 3 most recent of the 5; returned
+        # oldest-to-newest, i.e. 30.0 (i=2) first, 10.0 (i=0, most recent) last.
+        assert [m["cpu_percent"] for m in data] == [30.0, 20.0, 10.0]
+        timestamps = [m["timestamp"] for m in data]
+        assert timestamps == sorted(timestamps)
 
     def test_get_metrics_unknown_vm(self, auth_client):
         response = auth_client.get("/api/v1/metrics/cpu/does-not-exist")
