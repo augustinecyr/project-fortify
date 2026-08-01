@@ -48,7 +48,7 @@ if settings.SECRET_KEY == "change-me-in-production":
 app = FastAPI(
     title="Project Fortify API",
     description="AI-assisted AI-Ops solution for infrastructure monitoring",
-    version="1.1.1",
+    version="1.1.2",
 )
 
 app.state.limiter = limiter
@@ -178,6 +178,6 @@ async def root():
     """Root endpoint."""
     return {
         "message": "Welcome to Project Fortify API",
-        "version": "1.1.1",
+        "version": "1.1.2",
         "docs": "/docs"
     }

@@ -46,7 +46,7 @@ async def system_status(response: Response, db: Session = Depends(get_db)):
         return {
             "status": "operational",
             "database": "connected",
-            "version": "1.1.1",
+            "version": "1.1.2",
         }
     except Exception as e:
         logger.error("Database connectivity check failed: %s", e)
@@ -54,7 +54,7 @@ async def system_status(response: Response, db: Session = Depends(get_db)):
         return {
             "status": "degraded",
             "database": "disconnected",
-            "version": "1.1.1",
+            "version": "1.1.2",
         }
 
 

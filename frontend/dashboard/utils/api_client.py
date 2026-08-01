@@ -56,8 +56,9 @@ class FortifyAPIClient:
                 status = e.response.status_code
                 if status == 401:
                     clear_token()
+                    st.session_state["_just_logged_out"] = True
                     st.warning("Session expired. Please log in again.")
-                    st.switch_page("views/login.py")
+                    st.rerun()
                     return None
                 elif status == 429:
                     st.error("Too many requests. Please wait a moment and try again.")
